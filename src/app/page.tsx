@@ -56,7 +56,24 @@ export default function Home() {
           const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
           
           // Elevación de privilegios: Si el correo es de los autorizados o el rol contiene "back"
-          const backofficeEmails = ['mayerly.marin@firplak.com', 'ximena.ballestas@firplak.com', 'tatiana.duque@firplak.com', 'auxiliar.digitacion@firplak.com'];
+          const backofficeEmails = [
+            'mayerly.marin@firplak.com',
+            'ximena.ballestas@firplak.com',
+            'tatiana.duque@firplak.com',
+            'auxiliar.digitacion@firplak.com',
+            'luis.escobar@firplak.com',
+            'daniela.castro@firplak.com',
+            'juan.correa@firplak.com',
+            'marketplace@firplak.com',
+            'manuela.henao@firplak.com',
+            'ismael.correa@firplak.com',
+            'alejandro.isaza@firplak.com',
+            'servicios@firplak.com',
+            'servicios2@firplak.com',
+            'isabel.jaramillo@firplak.com',
+            'paula.guevara@firplak.com',
+            'analista2.desarrollo@firplak.com',
+          ];
           const normalizedRole = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back') 
             ? 'Backoffice' 
             : 'Asesor';
@@ -81,7 +98,24 @@ export default function Home() {
       if (session?.user) {
         const userEmail = session.user.email || '';
         const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
-        const backofficeEmails = ['mayerly.marin@firplak.com', 'ximena.ballestas@firplak.com', 'tatiana.duque@firplak.com', 'auxiliar.digitacion@firplak.com'];
+        const backofficeEmails = [
+            'mayerly.marin@firplak.com',
+            'ximena.ballestas@firplak.com',
+            'tatiana.duque@firplak.com',
+            'auxiliar.digitacion@firplak.com',
+            'luis.escobar@firplak.com',
+            'daniela.castro@firplak.com',
+            'juan.correa@firplak.com',
+            'marketplace@firplak.com',
+            'manuela.henao@firplak.com',
+            'ismael.correa@firplak.com',
+            'alejandro.isaza@firplak.com',
+            'servicios@firplak.com',
+            'servicios2@firplak.com',
+            'isabel.jaramillo@firplak.com',
+            'paula.guevara@firplak.com',
+            'analista2.desarrollo@firplak.com',
+          ];
         const normalizedRole = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back') 
           ? 'Backoffice' 
           : 'Asesor';
@@ -183,9 +217,17 @@ export default function Home() {
       
       try {
         const role = user ? user.role : 'Externo';
-        // Fallback: Si no hay nombre, intentamos usar el prefijo del email (nombre.apellido)
+
+        // Mapa explícito de correo → nombre exacto en columna Vendedor de la BD
+        // Usar cuando el nombre derivado del email no coincide con el nombre en la BD
+        const emailToVendedorName: Record<string, string> = {
+          'yaneth.rojas@firplak.com': 'Yaneth Rojas',
+        };
+
+        // Prioridad: mapa explícito > nombre de sesión > nombre derivado del email
         const nameFromEmail = user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ') : undefined;
-        const vendedorFilter = role === 'Asesor' ? (user?.name || nameFromEmail) : undefined;
+        const mappedName = user?.email ? emailToVendedorName[user.email.toLowerCase()] : undefined;
+        const vendedorFilter = role === 'Asesor' ? (mappedName || user?.name || nameFromEmail) : undefined;
 
         const data = await getOrdersFromVisor(role, vendedorFilter);
         setAllOrders(data);
