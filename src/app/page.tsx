@@ -55,8 +55,9 @@ export default function Home() {
           const userEmail = session.user.email || '';
           const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
           
-          // Elevación de privilegios: Si el correo es el de administración o el rol contiene "back"
-          const normalizedRole = userEmail.toLowerCase().includes('mayerly.marin') || rawRole.toLowerCase().includes('back') 
+          // Elevación de privilegios: Si el correo es de los autorizados o el rol contiene "back"
+          const backofficeEmails = ['mayerly.marin@firplak.com', 'ximena.ballestas@firplak.com', 'tatiana.duque@firplak.com', 'auxiliar.digitacion@firplak.com'];
+          const normalizedRole = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back') 
             ? 'Backoffice' 
             : 'Asesor';
           
@@ -80,7 +81,8 @@ export default function Home() {
       if (session?.user) {
         const userEmail = session.user.email || '';
         const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
-        const normalizedRole = userEmail.toLowerCase().includes('mayerly.marin') || rawRole.toLowerCase().includes('back') 
+        const backofficeEmails = ['mayerly.marin@firplak.com', 'ximena.ballestas@firplak.com', 'tatiana.duque@firplak.com', 'auxiliar.digitacion@firplak.com'];
+        const normalizedRole = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back') 
           ? 'Backoffice' 
           : 'Asesor';
 
