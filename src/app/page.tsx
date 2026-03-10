@@ -217,9 +217,17 @@ export default function Home() {
       
       try {
         const role = user ? user.role : 'Externo';
-        // Fallback: Si no hay nombre, intentamos usar el prefijo del email (nombre.apellido)
+
+        // Mapa explícito de correo → nombre exacto en columna Vendedor de la BD
+        // Usar cuando el nombre derivado del email no coincide con el nombre en la BD
+        const emailToVendedorName: Record<string, string> = {
+          'yaneth.rojas@firplak.com': 'Yaneth Rojas',
+        };
+
+        // Prioridad: mapa explícito > nombre de sesión > nombre derivado del email
         const nameFromEmail = user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ') : undefined;
-        const vendedorFilter = role === 'Asesor' ? (user?.name || nameFromEmail) : undefined;
+        const mappedName = user?.email ? emailToVendedorName[user.email.toLowerCase()] : undefined;
+        const vendedorFilter = role === 'Asesor' ? (mappedName || user?.name || nameFromEmail) : undefined;
 
         const data = await getOrdersFromVisor(role, vendedorFilter);
         setAllOrders(data);
