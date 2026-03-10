@@ -1,0 +1,23 @@
+﻿
+C:\Users\mayerly.marin\OneDrive - FIRPLAK SA\Escritorio\Proyecto IA\web-app\src\app\page.tsx
+    4:8  warning  'Navbar' is defined but never used                                                                                                                        @typescript-eslint/no-unused-vars
+  148:6  warning  React Hook useEffect has missing dependencies: 'activeStatusFilter', 'applyFiltering', and 'filters'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\mayerly.marin\OneDrive - FIRPLAK SA\Escritorio\Proyecto IA\web-app\src\components\FilterBar.tsx
+  4:10  warning  'useState' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\mayerly.marin\OneDrive - FIRPLAK SA\Escritorio\Proyecto IA\web-app\src\components\LoginModal.tsx
+  34:18  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\mayerly.marin\OneDrive - FIRPLAK SA\Escritorio\Proyecto IA\web-app\src\components\Pagination.tsx
+  29:17  error  'end' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\mayerly.marin\OneDrive - FIRPLAK SA\Escritorio\Proyecto IA\web-app\src\services\mockData.ts
+  19:49  warning  'userId' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\mayerly.marin\OneDrive - FIRPLAK SA\Escritorio\Proyecto IA\web-app\src\services\visorService.ts
+  2:17  warning  'OrderItem' is defined but never used  @typescript-eslint/no-unused-vars
+
+Ô£û 7 problems (1 error, 6 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

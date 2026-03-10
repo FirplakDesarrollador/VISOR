@@ -1,0 +1,18 @@
+﻿src/services/mockData.ts(9,9): error TS2741: Property 'id' is missing in type '{ name: string; email: string; role: string; }' but required in type 'User'.
+src/services/mockData.ts(13,9): error TS2741: Property 'id' is missing in type '{ name: string; email: string; role: string; }' but required in type 'User'.
+src/services/mockData.ts(37,96): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(37,116): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(38,96): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(38,116): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(58,95): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(58,115): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(75,93): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(75,114): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(96,88): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(96,108): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(112,95): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(112,115): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(128,88): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(128,109): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(149,96): error TS2322: Type 'number' is not assignable to type 'string'.
+src/services/mockData.ts(149,117): error TS2322: Type 'number' is not assignable to type 'string'.
