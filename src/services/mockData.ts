@@ -20,7 +20,7 @@ export const getOrders = async (role: UserRole, _userId?: string): Promise<Order
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Large mock dataset
-    const allOrders: Order[] = [
+    const allOrders: any[] = [
         {
             numero_orden_venta: 'OV-1001',
             numero_orden_compra: 'OC-2234',
