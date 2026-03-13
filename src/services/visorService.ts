@@ -111,6 +111,7 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
                 fecha_factura: cleanString(row["Fecha de la factura"]),
                 envio: cleanString(row["envio"] || row["Envio"] || row["envío"] || row["Envío"]),
                 estado_despacho: cleanString(row["Estado despacho"]),
+                estado_raw: cleanString(row["Estado"]),
                 normalizedStatus: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
             });
         }

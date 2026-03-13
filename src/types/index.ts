@@ -38,6 +38,7 @@ export interface VisorRow {
     "Estado despacho": string | null;
     "Estado de la orden": string | null;
     "Estado de la Orden"?: string | null;
+    "Estado"?: string | null;
     "# Remisión": string | null;
     "Transportador": string | null;
     "# GUIA": string | null;
@@ -98,6 +99,7 @@ export interface Order {
     fecha_factura?: string;
     envio?: string;
     estado_despacho?: string;
+    estado_raw?: string;
     bloqueado_despacho?: boolean;
     nueva_fecha?: string;
     normalizedStatus: string;

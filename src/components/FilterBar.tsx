@@ -111,6 +111,7 @@ export default function FilterBar({
                                     <option value="EnProceso">🟡 En Proceso</option>
                                     <option value="Transito">🔵 En Tránsito</option>
                                     <option value="Entregada">🟢 Entregadas</option>
+                                    <option value="raw:Abierto">📂 Abierto</option>
                                 </select>
                             </div>
 

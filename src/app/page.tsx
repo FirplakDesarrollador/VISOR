@@ -172,7 +172,11 @@ export default function Home() {
         let matchStatus = true;
         const state = normalize(order.estado_orden);
 
-        if (statusFilter === 'EnProceso') {
+        if (statusFilter && statusFilter.startsWith('raw:')) {
+          // Filtro directo por columna Estado de la BD (ej: "Abierto")
+          const rawVal = statusFilter.replace('raw:', '').toLowerCase();
+          matchStatus = normalize(order.estado_raw || '').includes(rawVal);
+        } else if (statusFilter === 'EnProceso') {
           // Agrupa: Pendientes + En Fabricación
           matchStatus = state.includes('pendiente') || state === '' || state.includes('produccion') || state.includes('proceso');
         } else if (statusFilter === 'Pendiente') {
