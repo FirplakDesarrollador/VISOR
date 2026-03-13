@@ -172,7 +172,10 @@ export default function Home() {
         let matchStatus = true;
         const state = normalize(order.estado_orden);
 
-        if (statusFilter === 'Pendiente') {
+        if (statusFilter === 'EnProceso') {
+          // Agrupa: Pendientes + En Fabricación
+          matchStatus = state.includes('pendiente') || state === '' || state.includes('produccion') || state.includes('proceso');
+        } else if (statusFilter === 'Pendiente') {
           matchStatus = state.includes('pendiente') || state === '';
         } else if (statusFilter === 'En Producción') {
           matchStatus = state.includes('produccion') || state.includes('proceso');
