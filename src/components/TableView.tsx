@@ -233,12 +233,12 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
         { key: 'valorTotal', label: 'Valor Total', width: '110px' },
         { key: 'transportador', label: 'Transportadora', width: '140px' },
         { key: 'guia', label: '# Guía', width: '110px' },
-        { key: 'fechaIngreso', label: 'F. Registro', width: '95px' },
-        { key: 'fechaRealDespacho', label: 'F. Despacho', width: '95px' },
-        { key: 'fechaEstimada', label: 'F. Estimada', width: '95px' },
-        { key: 'fechaEntrega', label: 'F. Entrega', width: '95px' },
+        { key: 'fechaIngreso', label: 'Fecha OV', width: '95px' },
+        { key: 'fechaRealDespacho', label: 'Fecha Desp', width: '95px' },
+        { key: 'fechaEstimada', label: 'Fecha Estim', width: '95px' },
+        { key: 'fechaEntrega', label: 'Fecha Entr', width: '95px' },
         { key: 'factura', label: 'Factura', width: '100px' },
-        { key: 'fechaFactura', label: 'F. Factura', width: '90px' },
+        { key: 'fechaFactura', label: 'Fecha Fact', width: '90px' },
     ];
 
     return (
