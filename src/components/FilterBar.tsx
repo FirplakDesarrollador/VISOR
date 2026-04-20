@@ -106,7 +106,7 @@ export default function FilterBar({
                     
                     {/* Badge resultados */}
                     <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 rounded-lg ml-1">
-                        <span className="text-[8px] font-black text-primary/50 uppercase tracking-widest">Total</span>
+                        <span className="text-[8px] font-black text-primary/50 uppercase tracking-widest">Pedidos</span>
                         <span className="text-sm font-black text-primary">{totalOrders}</span>
                     </div>
                 </div>
