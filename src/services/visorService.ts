@@ -164,13 +164,13 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             precio_unitario: (() => {
                 const v = cleanString(row["Precio por unidad"]);
                 if (!v) return undefined;
-                const n = parseFloat(v.replace(',', '.'));
+                const n = parseFloat(v.replace(/,/g, ''));
                 return isNaN(n) ? undefined : n;
             })(),
             valor_total: (() => {
                 const v = cleanString(row["Valor total"]);
                 if (!v) return undefined;
-                const n = parseFloat(v.replace(',', '.'));
+                const n = parseFloat(v.replace(/,/g, ''));
                 return isNaN(n) ? undefined : n;
             })(),
             estado_produccion: isCompleto ? 'Completo' :
