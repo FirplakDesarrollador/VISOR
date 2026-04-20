@@ -170,6 +170,7 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             estado_orden: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
             numero_guia: formatLargeNumber(row["# GUIA"]),
             transportador: row["Transportador"] || undefined,
+            estado_raw: cleanString(row["Estado"]),
         });
 
         // Hipótesis 3: Si un ítem ya tiene guía pero la orden no, actualizarla

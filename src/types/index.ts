@@ -21,8 +21,10 @@ export interface VisorRow {
     "Cantidad pedida": string | null;
     "cantidad facturada": string | null;
     "cant - ent - despacho": string | null;
-    "cant proc": string | null;
-    "cant planif": string | null;
+    "cant proc": bigint | number | string | null;
+    "cant planif": bigint | number | string | null;
+    "Precio por unidad": string | null;
+    "Valor total": string | null;
     "Componente": string | null;
     "situación item": string | null;
     "envio": string | null;
@@ -69,6 +71,7 @@ export interface OrderItem {
     estado_orden?: string;
     numero_guia?: string;
     transportador?: string;
+    estado_raw?: string;
 }
 
 export interface Order {

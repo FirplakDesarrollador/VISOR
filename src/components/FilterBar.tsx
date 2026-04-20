@@ -24,6 +24,7 @@ interface FilterBarProps {
     };
     activeStatusFilter: string | null;
     onStatusFilterChange: (status: string | null) => void;
+    rawStatuses?: string[];
     filters: SearchFilters;
     onFilterChange: (filters: SearchFilters) => void;
 }
@@ -47,6 +48,7 @@ export default function FilterBar({
     counts,
     activeStatusFilter,
     onStatusFilterChange,
+    rawStatuses = [],
     filters,
     onFilterChange
 }: FilterBarProps) {
@@ -111,7 +113,16 @@ export default function FilterBar({
                                     <option value="EnProceso">🟡 En Proceso</option>
                                     <option value="Transito">🔵 En Tránsito</option>
                                     <option value="Entregada">🟢 Entregadas</option>
-                                    <option value="raw:Abierto">📂 Abierto</option>
+                                    {rawStatuses.length > 0 && (
+                                        <>
+                                            <hr className="my-1 border-slate-100" />
+                                            <optgroup label="Estados en Base de Datos">
+                                                {rawStatuses.map(s => (
+                                                    <option key={s} value={`raw:${s}`}>📁 {s}</option>
+                                                ))}
+                                            </optgroup>
+                                        </>
+                                    )}
                                 </select>
                             </div>
 

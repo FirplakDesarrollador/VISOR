@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import OrderCard from '@/components/OrderCard';
 import TableView from '@/components/TableView';
 import OrderDetail from '@/components/OrderDetail';
 import Dashboard from '@/components/Dashboard';
+import VisorTable from '@/components/VisorTable';
 import FilterBar, { SearchFilters } from '@/components/FilterBar';
 import LoginModal from '@/components/LoginModal';
 import Pagination from '@/components/Pagination';
@@ -20,7 +21,7 @@ export default function Home() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos'>('pedidos');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos' | 'visor'>('pedidos');
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loading, setLoading] = useState(true); // Start as loading to avoid flash
@@ -154,7 +155,7 @@ export default function Home() {
     let matches = data;
 
     if (user) {
-      matches = data.filter(order => {
+      matches = data.map(order => {
         const ov = normalize(order.numero_orden_venta);
         const searchOV = normalize(searchFilters.ov);
         const oc = normalize(order.numero_orden_compra || '');
@@ -169,30 +170,38 @@ export default function Home() {
         const matchClient = !searchClient || client.includes(searchClient);
         const matchNIT = !searchNIT || nit.includes(searchNIT);
 
-        let matchStatus = true;
-        const state = normalize(order.estado_orden);
+        if (!(matchOV && matchOC && matchClient && matchNIT)) return null;
 
-        if (statusFilter && statusFilter.startsWith('raw:')) {
-          // Filtro directo por columna Estado de la BD (ej: "Abierto")
-          const rawVal = statusFilter.replace('raw:', '').toLowerCase();
-          matchStatus = normalize(order.estado_raw || '').includes(rawVal);
-        } else if (statusFilter === 'EnProceso') {
-          // Agrupa: Pendientes + En Fabricación
-          matchStatus = state.includes('pendiente') || state === '' || state.includes('produccion') || state.includes('proceso');
-        } else if (statusFilter === 'Pendiente') {
-          matchStatus = state.includes('pendiente') || state === '';
-        } else if (statusFilter === 'En Producción') {
-          matchStatus = state.includes('produccion') || state.includes('proceso');
-        } else if (statusFilter === 'Transito') {
-          matchStatus = (state.includes('transito') || state.includes('facturada') || state.includes('despachada')) && !state.includes('entregada');
-        } else if (statusFilter === 'Entregada') {
-          matchStatus = state.includes('entregada');
-        }
+        if (!statusFilter) return order;
 
-        return matchOV && matchOC && matchClient && matchNIT && matchStatus;
-      });
+        // Filtering items based on status
+        const filteredItems = order.items.filter(item => {
+          const itemState = normalize(item.estado_raw || order.estado_raw || '');
+          const itemNormalized = normalize(item.estado_orden || order.estado_orden || '');
+
+          if (statusFilter.startsWith('raw:')) {
+            const rawVal = statusFilter.replace('raw:', '').toLowerCase();
+            return itemState.includes(rawVal);
+          } else if (statusFilter === 'EnProceso') {
+            return itemNormalized.includes('pendiente') || itemNormalized === '' || itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
+          } else if (statusFilter === 'Pendiente') {
+            return itemNormalized.includes('pendiente') || itemNormalized === '';
+          } else if (statusFilter === 'En Producción') {
+            return itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
+          } else if (statusFilter === 'Transito') {
+            return (itemNormalized.includes('transito') || itemNormalized.includes('facturada') || itemNormalized.includes('despachada')) && !itemNormalized.includes('entregada');
+          } else if (statusFilter === 'Entregada') {
+            return itemNormalized.includes('entregada');
+          }
+          return true;
+        });
+
+        if (filteredItems.length === 0) return null;
+
+        return { ...order, items: filteredItems };
+      }).filter(Boolean) as Order[];
     } else {
-      // Public search logic (exact match)
+      // Public search remains as is (items not filtered individually as it's usually 1 item per card anyway)
       matches = data.filter(order => {
         const matchOV = !searchFilters.ov || normalize(order.numero_orden_venta) === normalize(searchFilters.ov);
         const matchOC = !searchFilters.oc || normalize(order.numero_orden_compra || '') === normalize(searchFilters.oc);
@@ -200,6 +209,7 @@ export default function Home() {
         return (searchFilters.ov || searchFilters.oc || searchFilters.nit) && (matchOV && matchOC && matchNIT);
       });
     }
+
     // Ordenar por fecha de ingreso (Descendente - más recientes primero)
     const sorted = [...matches].sort((a, b) => {
       const dateA = a.fecha_ingreso || '';
@@ -254,7 +264,7 @@ export default function Home() {
     applyFiltering(allOrders, filters, activeStatusFilter);
   }, [allOrders, filters, activeStatusFilter, applyFiltering]);
 
-  const counts = (() => {
+  const counts = useMemo(() => {
     const normalize = (str: string) => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     return {
       pending: allOrders.filter(o => {
@@ -274,7 +284,18 @@ export default function Home() {
         return s.includes('entregada');
       }).length
     };
-  })();
+  }, [allOrders]);
+
+  const rawStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    allOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (item.estado_raw) statuses.add(item.estado_raw);
+      });
+      if (order.estado_raw) statuses.add(order.estado_raw);
+    });
+    return Array.from(statuses).sort();
+  }, [allOrders]);
 
   const handleSearch = (newFilters: SearchFilters = filters, statusFilter: string | null = activeStatusFilter) => {
     setHasSearched(true);
@@ -284,10 +305,10 @@ export default function Home() {
   };
 
   const handleDownload = () => {
-    if (allOrders.length === 0) return;
+    if (filteredOrders.length === 0) return;
 
     // 1. Preparar la data plana (aplanar órdenes con sus ítems)
-    const exportData = allOrders.flatMap(order => 
+    const exportData = filteredOrders.flatMap(order => 
       order.items.map(item => ({
         "Fecha Ingreso": order.fecha_ingreso,
         "Orden Venta": order.numero_orden_venta,
@@ -372,6 +393,14 @@ export default function Home() {
               >
                 Pedidos
               </button>
+              {user?.role === 'Backoffice' && (
+                <button
+                  onClick={() => { setActiveTab('visor'); setSelectedOrder(null); }}
+                  className={`px-4 py-2 text-sm font-bold transition-all rounded-xl ${activeTab === 'visor' ? 'text-white bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                >
+                  Visor
+                </button>
+              )}
             </div>
           </div>
 
@@ -401,6 +430,8 @@ export default function Home() {
               role={user?.role === 'Asesor' ? 'Asesor' : 'Backoffice'}
               onBack={() => setSelectedOrder(null)}
             />
+          ) : activeTab === 'visor' ? (
+            <VisorTable />
           ) : activeTab === 'dashboard' ? (
             <Dashboard orders={allOrders} />
           ) : (
@@ -420,6 +451,7 @@ export default function Home() {
                   setActiveStatusFilter(status);
                   handleSearch(filters, status);
                 }}
+                rawStatuses={rawStatuses}
                 filters={filters}
                 onFilterChange={setFilters}
                 onSearch={handleSearch}

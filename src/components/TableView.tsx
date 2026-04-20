@@ -130,17 +130,18 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                 cantDespacho: item.cantidad_despacho,
                 cantProduccion: item.cantidad_produccion,
                 cantPlanificada: item.cantidad_planificada,
-                estado: (order.normalizedStatus?.includes('transito') && order.transportador?.toLowerCase().includes('cliente recoge')) 
+                estado: item.estado_raw ? cleanStr(item.estado_raw) : 
+                        ((order.normalizedStatus?.includes('transito') && order.transportador?.toLowerCase().includes('cliente recoge')) 
                          ? 'LISTO PARA RECOGER' 
-                         : cleanStr(order.estado_orden),
+                         : cleanStr(order.estado_orden)),
                 fechaIngreso: cleanStr(order.fecha_ingreso),
                 fechaDespacho: cleanStr(order.fecha_plan_despacho),
                 fechaRealDespacho: cleanStr(order.fecha_real_despacho),
                 fechaEstimada: cleanStr(order.fecha_estimada_entrega),
                 fechaEntrega: cleanStr(order.fecha_entrega),
                 isRealEntrega: !!order.fecha_entrega && cleanStr(order.fecha_entrega) !== '',
-                guia: cleanStr(order.numero_guia),
-                transportador: cleanStr(order.transportador),
+                guia: cleanStr(item.numero_guia || order.numero_guia),
+                transportador: cleanStr(item.transportador || order.transportador),
                 factura: cleanStr(order.numero_factura),
                 fechaFactura: cleanStr(order.fecha_factura),
                 ciudad: order.ciudad_destino,
