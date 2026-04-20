@@ -25,15 +25,13 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             <td className="sticky left-[90px] z-10 px-2 py-1.5 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
             <td className="sticky left-[200px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
             <td className="sticky left-[320px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
-            <td className="px-2 py-1.5 border-r border-slate-200/50">
-                <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                    row.estado.toLowerCase().includes('entregada') ? 'text-green-800 bg-green-100/60' :
-                    row.estado.toLowerCase().includes('transito') || row.estado.toLowerCase().includes('tránsito') ? 'text-amber-800 bg-amber-100/60' :
-                    row.estado.toLowerCase().includes('produccion') || row.estado.toLowerCase().includes('producción') ? 'text-orange-800 bg-orange-100/60' :
-                    'text-slate-600 bg-slate-100/60'
-                }`}>
-                    {row.estado}
-                </span>
+            <td className={`px-2 py-1.5 text-[9px] font-black uppercase tracking-wider border-r border-slate-200/50 ${
+                row.estado.toLowerCase().includes('entregada') ? 'text-green-700' :
+                row.estado.toLowerCase().includes('transito') || row.estado.toLowerCase().includes('tránsito') ? 'text-amber-600' :
+                row.estado.toLowerCase().includes('produccion') || row.estado.toLowerCase().includes('producción') ? 'text-orange-600' :
+                'text-slate-600'
+            }`}>
+                {row.estado}
             </td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.vendedor}</td>
             <td className="px-2 py-1.5 text-[10px] font-black text-slate-400 text-center border-r border-slate-200/50 bg-slate-50/50">{row.itemIdx}</td>
