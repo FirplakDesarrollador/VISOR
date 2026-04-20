@@ -6,7 +6,6 @@ import OrderCard from '@/components/OrderCard';
 import TableView from '@/components/TableView';
 import OrderDetail from '@/components/OrderDetail';
 import Dashboard from '@/components/Dashboard';
-import VisorTable from '@/components/VisorTable';
 import FilterBar, { SearchFilters } from '@/components/FilterBar';
 import LoginModal from '@/components/LoginModal';
 import Pagination from '@/components/Pagination';
@@ -21,7 +20,7 @@ export default function Home() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos' | 'visor'>('pedidos');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos'>('pedidos');
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loading, setLoading] = useState(true); // Start as loading to avoid flash
@@ -395,13 +394,6 @@ export default function Home() {
               >
                 Pedidos
               </button>
-              {user?.role === 'Backoffice' && (
-                <button
-                  onClick={() => { setActiveTab('visor'); setSelectedOrder(null); }}
-                  className={`px-4 py-2 text-sm font-bold transition-all rounded-xl ${activeTab === 'visor' ? 'text-white bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-                >
-                  Visor
-                </button>
               )}
             </div>
           </div>
@@ -432,8 +424,6 @@ export default function Home() {
               role={user?.role === 'Asesor' ? 'Asesor' : 'Backoffice'}
               onBack={() => setSelectedOrder(null)}
             />
-          ) : activeTab === 'visor' ? (
-            <VisorTable />
           ) : activeTab === 'dashboard' ? (
             <Dashboard orders={allOrders} />
           ) : (
