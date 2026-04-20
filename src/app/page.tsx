@@ -332,16 +332,16 @@ export default function Home() {
         "Cant. Planificada": item.cantidad_planificada,
         "Estado Prod.": item.estado_produccion || 'Pendiente',
         "Fecha Despacho Plan": order.fecha_plan_despacho,
-        "Fecha Real Despacho": order.fecha_real_despacho || '',
-        "Transportadora": order.transportador || '',
-        "Guía de Seguimiento": order.numero_guia || '',
-        "Estado Despacho": order.estado_despacho || '',
-        "Fecha Estimada Entrega": order.fecha_estimada_entrega || '',
-        "Fecha Real Entrega": order.fecha_entrega || '',
+        "Fecha Real Despacho": item.fecha_real_despacho || '',
+        "Transportadora": item.transportador || '',
+        "Guía de Seguimiento": item.numero_guia || '',
+        "Estado Despacho": item.estado_despacho || '',
+        "Fecha Estimada Entrega": item.fecha_estimada_entrega || '',
+        "Fecha Real Entrega": item.fecha_entrega || '',
         "Estado Real": item.cantidad_facturada >= item.cantidad_pedida ? "🟢 COMPLETADO" : 
                        item.cantidad_facturada > 0 ? "🟡 EN PROCESO" : "⚪ PENDIENTE",
-        "Factura": order.numero_factura || '',
-        "Fecha Factura": order.fecha_factura || '',
+        "Factura": item.numero_factura || '',
+        "Fecha Factura": item.fecha_factura || '',
         "Envío": order.envio || item.envio || ''
       }))
     );

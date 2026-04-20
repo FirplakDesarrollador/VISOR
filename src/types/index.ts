@@ -72,6 +72,14 @@ export interface OrderItem {
     numero_guia?: string;
     transportador?: string;
     estado_raw?: string;
+    // Per-item fields from each DB row (NOT propagated from order)
+    remision?: string;
+    fecha_real_despacho?: string;
+    fecha_entrega?: string;
+    numero_factura?: string;
+    fecha_factura?: string;
+    estado_despacho?: string;
+    fecha_estimada_entrega?: string;
 }
 
 export interface Order {

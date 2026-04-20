@@ -136,18 +136,19 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                          : cleanStr(order.estado_orden)),
                 fechaIngreso: cleanStr(order.fecha_ingreso),
                 fechaDespacho: cleanStr(order.fecha_plan_despacho),
-                fechaRealDespacho: cleanStr(order.fecha_real_despacho),
-                fechaEstimada: cleanStr(order.fecha_estimada_entrega),
-                fechaEntrega: cleanStr(order.fecha_entrega),
-                isRealEntrega: !!order.fecha_entrega && cleanStr(order.fecha_entrega) !== '',
-                guia: cleanStr(item.numero_guia || order.numero_guia),
-                transportador: cleanStr(item.transportador || order.transportador),
-                factura: cleanStr(order.numero_factura),
-                fechaFactura: cleanStr(order.fecha_factura),
+                // PER-ITEM: cada fila muestra SOLO sus propios datos de la BD
+                fechaRealDespacho: cleanStr(item.fecha_real_despacho),
+                fechaEstimada: cleanStr(item.fecha_estimada_entrega),
+                fechaEntrega: cleanStr(item.fecha_entrega),
+                isRealEntrega: !!item.fecha_entrega && cleanStr(item.fecha_entrega) !== '',
+                guia: cleanStr(item.numero_guia),
+                transportador: cleanStr(item.transportador),
+                factura: cleanStr(item.numero_factura),
+                fechaFactura: cleanStr(item.fecha_factura),
                 ciudad: order.ciudad_destino,
-                colorRow: order.estado_orden.toLowerCase().includes('entregada') ? 'bg-[#E2EFDA] hover:bg-[#D5EAD8]' : 
-                          order.estado_orden.toLowerCase().includes('transito') ? 'bg-[#FFF2CC] hover:bg-[#FFE699]' :
-                          order.estado_orden.toLowerCase().includes('produccion') ? 'bg-[#FCE4D6] hover:bg-[#F8CBAD]' : 'bg-white hover:bg-slate-50'
+                colorRow: (item.estado_raw || order.estado_orden).toLowerCase().includes('entregada') ? 'bg-[#E2EFDA] hover:bg-[#D5EAD8]' : 
+                          (item.estado_raw || order.estado_orden).toLowerCase().includes('transito') ? 'bg-[#FFF2CC] hover:bg-[#FFE699]' :
+                          (item.estado_raw || order.estado_orden).toLowerCase().includes('produccion') ? 'bg-[#FCE4D6] hover:bg-[#F8CBAD]' : 'bg-white hover:bg-slate-50'
             }))
         );
     }, [orders]);

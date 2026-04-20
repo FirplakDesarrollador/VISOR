@@ -169,8 +169,16 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             envio: row["envio"] || row["Envio"] || row["envío"] || row["Envío"] || undefined,
             estado_orden: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
             numero_guia: formatLargeNumber(row["# GUIA"]),
-            transportador: row["Transportador"] || undefined,
+            transportador: cleanString(row["Transportador"]),
             estado_raw: cleanString(row["Estado"]),
+            // Per-item row data — preserva integridad de cada fila de la BD
+            remision: cleanString(row["# Remisión"]),
+            fecha_real_despacho: cleanString(row["Fecha real de despacho"]),
+            fecha_entrega: cleanString(row["Fecha de entrega"]),
+            numero_factura: formatLargeNumber(row["# Factura"]),
+            fecha_factura: cleanString(row["Fecha de la factura"]),
+            estado_despacho: cleanString(row["Estado despacho"]),
+            fecha_estimada_entrega: cleanString(row["Fecha estimada de entrega (real)"]) || cleanString(row["Fecha estimada de entrega"]),
         });
 
         // Hipótesis 3: Si un ítem ya tiene guía pero la orden no, actualizarla
