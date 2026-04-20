@@ -161,6 +161,18 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             cantidad_despacho: cantDespacho,
             cantidad_produccion: cantProduccion,
             cantidad_planificada: cantPlanificado,
+            precio_unitario: (() => {
+                const v = cleanString(row["Precio por unidad"]);
+                if (!v) return undefined;
+                const n = parseFloat(v.replace(',', '.'));
+                return isNaN(n) ? undefined : n;
+            })(),
+            valor_total: (() => {
+                const v = cleanString(row["Valor total"]);
+                if (!v) return undefined;
+                const n = parseFloat(v.replace(',', '.'));
+                return isNaN(n) ? undefined : n;
+            })(),
             estado_produccion: isCompleto ? 'Completo' :
                               cantFacturada >= cantPedida && cantPedida > 0 ? 'Entregada' :
                               cantProduccion > 0 ? 'En Producción' : 'Pendiente',

@@ -48,6 +48,8 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             <td className="px-5 py-5 text-sm font-black text-center text-emerald-600 border-r border-slate-200/50 bg-emerald-50/20 whitespace-nowrap">{row.cantDespacho}</td>
             <td className="px-5 py-5 text-sm font-black text-center text-amber-600 border-r border-slate-200/50 bg-amber-50/20 whitespace-nowrap">{row.cantProduccion}</td>
             <td className="px-5 py-5 text-sm font-black text-center text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{row.cantPlanificada}</td>
+            <td className="px-5 py-5 text-xs font-black text-right text-violet-700 border-r border-slate-200/50 bg-violet-50/20 whitespace-nowrap">{row.precioUnitario != null ? `$ ${row.precioUnitario.toLocaleString('es-CO')}` : ''}</td>
+            <td className="px-5 py-5 text-xs font-black text-right text-violet-800 border-r border-slate-200/50 bg-violet-50/30 whitespace-nowrap">{row.valorTotal != null ? `$ ${row.valorTotal.toLocaleString('es-CO')}` : ''}</td>
             <td className="px-5 py-5 text-xs font-bold text-slate-600 border-r border-slate-200/50 truncate max-w-[200px]">{row.transportador}</td>
             <td className="px-5 py-5 text-xs font-bold text-slate-700 border-r border-slate-200/50 font-mono tracking-widest truncate max-w-[180px]">{row.guia}</td>
             <td className="px-5 py-5 text-[11px] font-bold text-slate-500 border-r border-slate-200/50">{row.fechaIngreso}</td>
@@ -130,6 +132,8 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                 cantDespacho: item.cantidad_despacho,
                 cantProduccion: item.cantidad_produccion,
                 cantPlanificada: item.cantidad_planificada,
+                precioUnitario: item.precio_unitario,
+                valorTotal: item.valor_total,
                 estado: item.estado_raw ? cleanStr(item.estado_raw) : 
                         ((order.normalizedStatus?.includes('transito') && order.transportador?.toLowerCase().includes('cliente recoge')) 
                          ? 'LISTO PARA RECOGER' 
@@ -258,6 +262,8 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                                 { key: 'cantDespacho', label: 'Desp.', width: '70px' },
                                 { key: 'cantProduccion', label: 'Prod.', width: '70px' },
                                 { key: 'cantPlanificada', label: 'Plan.', width: '70px' },
+                                { key: 'precioUnitario', label: 'Precio Unit.', width: '120px' },
+                                { key: 'valorTotal', label: 'Valor Total', width: '120px' },
                                 { key: 'transportador', label: 'Transportadora', width: '200px' },
                                 { key: 'guia', label: '# Guía', width: '180px' },
                                 { key: 'fechaIngreso', label: 'F. Registro', width: '140px' },

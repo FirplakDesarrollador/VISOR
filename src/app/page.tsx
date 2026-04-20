@@ -330,6 +330,8 @@ export default function Home() {
         "Cant. Despacho": item.cantidad_despacho,
         "Cant. Producción": item.cantidad_produccion,
         "Cant. Planificada": item.cantidad_planificada,
+        "Precio Unitario": item.precio_unitario ?? '',
+        "Valor Total": item.valor_total ?? '',
         "Estado Prod.": item.estado_produccion || 'Pendiente',
         "Fecha Despacho Plan": order.fecha_plan_despacho,
         "Fecha Real Despacho": item.fecha_real_despacho || '',
