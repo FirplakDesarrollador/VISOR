@@ -217,11 +217,11 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
     // Column definitions — COMPACTO
     const columns = [
         { key: 'ov', label: 'OV', width: '90px', sticky: 'left-0', z: 'z-[30]' },
-        { key: 'oc', label: 'OC', width: '110px', sticky: 'left-[90px]', z: 'z-[30]' },
-        { key: 'nit', label: 'Cód. Cliente', width: '120px', sticky: 'left-[200px]', z: 'z-[30]' },
-        { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[320px]', z: 'z-[30]' },
-        { key: 'estado', label: 'Estado', width: '130px' },
-        { key: 'vendedor', label: 'Vendedor', width: '140px' },
+        { key: 'oc', label: 'OC', width: '80px', sticky: 'left-[90px]', z: 'z-[30]' },
+        { key: 'nit', label: 'Cód. Cliente', width: '120px', sticky: 'left-[170px]', z: 'z-[30]' },
+        { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[290px]', z: 'z-[30]' },
+        { key: 'estado', label: 'Estado', width: '110px' },
+        { key: 'vendedor', label: 'Vendedor', width: '110px' },
         { key: 'itemIdx', label: 'IT', width: '40px', preventTranslation: true },
         { key: 'producto', label: 'Producto', width: '250px' },
         { key: 'cantidad', label: 'Ped', width: '50px' },
