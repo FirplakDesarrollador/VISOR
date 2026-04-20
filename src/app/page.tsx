@@ -147,77 +147,101 @@ export default function Home() {
   }, [filters, activeStatusFilter, currentPage, hasSearched]);
 
   // --- HELPERS ---
-  const applyFiltering = useCallback((data: Order[], searchFilters: SearchFilters, statusFilter: string | null) => {
-    const normalize = (str: string) =>
-      (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const normalize = (str: string) =>
+    (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    let matches = data;
+  const isItemInStatus = (item: any, order: Order, status: string) => {
+    const itemState = normalize(item.estado_raw || order.estado_raw || '');
+    const itemNormalized = normalize(item.estado_orden || order.estado_orden || '');
 
-    if (user) {
-      matches = data.map(order => {
-        const ov = normalize(order.numero_orden_venta);
-        const searchOV = normalize(searchFilters.ov);
-        const oc = normalize(order.numero_orden_compra || '');
-        const searchOC = normalize(searchFilters.oc);
-        const client = normalize(order.nombre_cliente);
-        const searchClient = normalize(searchFilters.clientName);
-        const nit = (order.nit_cliente || '').trim();
-        const searchNIT = (searchFilters.nit || '').trim();
+    if (status.startsWith('raw:')) {
+      const rawVal = status.replace('raw:', '').toLowerCase();
+      return itemState.includes(rawVal);
+    } 
+    
+    switch (status) {
+      case 'EnProceso':
+        return itemNormalized.includes('pendiente') || itemNormalized === '' || itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
+      case 'Pendiente':
+        return itemNormalized.includes('pendiente') || itemNormalized === '';
+      case 'En Producción':
+        return itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
+      case 'Transito':
+        return (itemNormalized.includes('transito') || itemNormalized.includes('facturada') || itemNormalized.includes('despachada')) && !itemNormalized.includes('entregada');
+      case 'Entregada':
+        return itemNormalized.includes('entregada');
+      default:
+        return true;
+    }
+  };
 
-        const matchOV = !searchOV || ov.includes(searchOV);
-        const matchOC = !searchOC || oc.includes(searchOC);
-        const matchClient = !searchClient || client.includes(searchClient);
-        const matchNIT = !searchNIT || nit.includes(searchNIT);
-
-        if (!(matchOV && matchOC && matchClient && matchNIT)) return null;
-
-        if (!statusFilter) return order;
-
-        // Filtering items based on status
-        const filteredItems = order.items.filter(item => {
-          const itemState = normalize(item.estado_raw || order.estado_raw || '');
-          const itemNormalized = normalize(item.estado_orden || order.estado_orden || '');
-
-          if (statusFilter.startsWith('raw:')) {
-            const rawVal = statusFilter.replace('raw:', '').toLowerCase();
-            return itemState.includes(rawVal);
-          } else if (statusFilter === 'EnProceso') {
-            return itemNormalized.includes('pendiente') || itemNormalized === '' || itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
-          } else if (statusFilter === 'Pendiente') {
-            return itemNormalized.includes('pendiente') || itemNormalized === '';
-          } else if (statusFilter === 'En Producción') {
-            return itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
-          } else if (statusFilter === 'Transito') {
-            return (itemNormalized.includes('transito') || itemNormalized.includes('facturada') || itemNormalized.includes('despachada')) && !itemNormalized.includes('entregada');
-          } else if (statusFilter === 'Entregada') {
-            return itemNormalized.includes('entregada');
-          }
-          return true;
-        });
-
-        if (filteredItems.length === 0) return null;
-
-        return { ...order, items: filteredItems };
-      }).filter(Boolean) as Order[];
-    } else {
-      // Public search remains as is (items not filtered individually as it's usually 1 item per card anyway)
-      matches = data.filter(order => {
-        const matchOV = !searchFilters.ov || normalize(order.numero_orden_venta) === normalize(searchFilters.ov);
-        const matchOC = !searchFilters.oc || normalize(order.numero_orden_compra || '') === normalize(searchFilters.oc);
-        const matchNIT = !searchFilters.nit || (order.nit_cliente || '').trim() === searchFilters.nit.trim();
-        return (searchFilters.ov || searchFilters.oc || searchFilters.nit) && (matchOV && matchOC && matchNIT);
+  // 1. Searched Orders (Apply text filters only)
+  const searchedOrders = useMemo(() => {
+    if (!user) {
+      // Public search logic
+      return allOrders.filter(order => {
+        const matchOV = !filters.ov || normalize(order.numero_orden_venta) === normalize(filters.ov);
+        const matchOC = !filters.oc || normalize(order.numero_orden_compra || '') === normalize(filters.oc);
+        const matchNIT = !filters.nit || (order.nit_cliente || '').trim() === filters.nit.trim();
+        return (filters.ov || filters.oc || filters.nit) && (matchOV && matchOC && matchNIT);
       });
     }
 
-    // Ordenar por fecha de ingreso (Descendente - más recientes primero)
-    const sorted = [...matches].sort((a, b) => {
+    // Backoffice search logic
+    return allOrders.filter(order => {
+      const ov = normalize(order.numero_orden_venta);
+      const searchOV = normalize(filters.ov);
+      const oc = normalize(order.numero_orden_compra || '');
+      const searchOC = normalize(filters.oc);
+      const client = normalize(order.nombre_cliente);
+      const searchClient = normalize(filters.clientName);
+      const nit = (order.nit_cliente || '').trim();
+      const searchNIT = (filters.nit || '').trim();
+
+      const matchOV = !searchOV || ov.includes(searchOV);
+      const matchOC = !searchOC || oc.includes(searchOC);
+      const matchClient = !searchClient || client.includes(searchClient);
+      const matchNIT = !searchNIT || nit.includes(searchNIT);
+
+      return matchOV && matchOC && matchClient && matchNIT;
+    });
+  }, [allOrders, filters, user]);
+
+  // 2. Status Counts (Based on searched orders)
+  const counts = useMemo(() => {
+    return {
+      pending: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Pendiente'))).length,
+      production: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'En Producción'))).length,
+      transit: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Transito'))).length,
+      delivered: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Entregada'))).length,
+      enProceso: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'EnProceso'))).length,
+    };
+  }, [searchedOrders]);
+
+  // 3. Final Filtered Orders (Apply status filter)
+  const finalOrders = useMemo(() => {
+    let result = searchedOrders;
+
+    if (user && activeStatusFilter) {
+      result = searchedOrders.map(order => {
+        const filteredItems = order.items.filter(item => isItemInStatus(item, order, activeStatusFilter));
+        if (filteredItems.length === 0) return null;
+        return { ...order, items: filteredItems };
+      }).filter(Boolean) as Order[];
+    }
+
+    // Sort by entry date (Descending)
+    return [...result].sort((a, b) => {
       const dateA = a.fecha_ingreso || '';
       const dateB = b.fecha_ingreso || '';
       return dateB.localeCompare(dateA);
     });
+  }, [searchedOrders, activeStatusFilter, user]);
 
-    setFilteredOrders(sorted);
-  }, [user, hasSearched]);
+  // Update filteredOrders whenever finalOrders changes
+  useEffect(() => {
+    setFilteredOrders(finalOrders);
+  }, [finalOrders]);
 
   // --- DATA FETCHING ---
   // Only re-fetch when the user/role changes or session is first checked.
@@ -257,34 +281,6 @@ export default function Home() {
     fetchOrders();
   }, [user, isSessionChecked]);
 
-  // --- LOCAL FILTERING ---
-  // This handles search and status filters locally without triggering the global loading state.
-  useEffect(() => {
-    applyFiltering(allOrders, filters, activeStatusFilter);
-  }, [allOrders, filters, activeStatusFilter, applyFiltering]);
-
-  const counts = useMemo(() => {
-    const normalize = (str: string) => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    return {
-      pending: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return s.includes('pendiente') || s === '';
-      }).length,
-      production: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return s.includes('produccion') || s.includes('proceso');
-      }).length,
-      transit: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return (s.includes('transito') || s.includes('facturada') || s.includes('despachada')) && !s.includes('entregada');
-      }).length,
-      delivered: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return s.includes('entregada');
-      }).length
-    };
-  }, [allOrders]);
-
   const rawStatuses = useMemo(() => {
     const statuses = new Set<string>();
     allOrders.forEach(order => {
@@ -300,7 +296,7 @@ export default function Home() {
     setHasSearched(true);
     setCurrentPage(1);
     setFilters(newFilters);
-    applyFiltering(allOrders, newFilters, statusFilter);
+    setActiveStatusFilter(statusFilter);
   };
 
   const handleDownload = () => {

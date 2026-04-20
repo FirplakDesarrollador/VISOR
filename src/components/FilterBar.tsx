@@ -21,6 +21,7 @@ interface FilterBarProps {
         production: number;
         transit: number;
         delivered: number;
+        enProceso?: number;
     };
     activeStatusFilter: string | null;
     onStatusFilterChange: (status: string | null) => void;
@@ -62,11 +63,8 @@ export default function FilterBar({
         }
     };
 
-    // Conteo para "En Proceso" = Pendientes + En Fabricación
-    const enProcesoCount = counts.pending + counts.production;
-
     const getCount = (id: string) => {
-        if (id === 'EnProceso') return enProcesoCount;
+        if (id === 'EnProceso') return counts.enProceso ?? (counts.pending + counts.production);
         if (id === 'Transito')  return counts.transit;
         if (id === 'Entregada') return counts.delivered;
         return 0;
