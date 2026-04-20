@@ -32,7 +32,7 @@ export default function Home() {
   const [filters, setFilters] = useState<SearchFilters>({
     ov: '', oc: '', clientName: '', nit: ''
   });
-  const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(null);
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>('EnProceso');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
 
   const itemsPerPage = 12;
