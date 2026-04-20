@@ -13,56 +13,56 @@ type SortConfig = {
     direction: 'asc' | 'desc' | null;
 };
 
-// Componente de Fila Memoizado para evitar re-renders innecesarios
+// Componente de Fila Memoizado — COMPACTO
 const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => void }) => {
     return (
         <tr 
             onClick={() => onClick(row.orderRef)}
             className={`transition-all cursor-pointer group hover:shadow-inner ${row.colorRow}`}
-            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 56px' } as any}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 36px' } as any}
         >
-            <td className="sticky left-0 z-10 px-5 py-5 text-sm font-black text-[#0078D4] border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] tracking-tight">{row.ov}</td>
-            <td className="sticky left-[150px] z-10 px-5 py-5 text-[13px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] tracking-wide">{row.oc}</td>
-            <td className="sticky left-[300px] z-10 px-5 py-5 text-xs font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] tracking-wider truncate max-w-[150px]">{row.nit}</td>
-            <td className="sticky left-[450px] z-10 px-5 py-5 text-sm font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[10px_0_15px_-6px_rgba(0,0,0,0.15)] truncate max-w-[340px]">{row.cliente}</td>
-            <td className="px-5 py-5 border-r border-slate-200/50">
-                <span className={`inline-flex px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest shadow-sm ${
-                    row.estado.includes('ENTREGADA') ? 'text-green-800 bg-green-100/50' :
-                    row.estado.includes('TRANSITO') ? 'text-amber-800 bg-amber-100/50 border border-amber-200/50' :
-                    row.estado.includes('PRODUCCION') ? 'text-orange-800 bg-orange-100/50' :
-                    'text-slate-600 bg-slate-100/50'
+            <td className="sticky left-0 z-10 px-2 py-1.5 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.ov}</td>
+            <td className="sticky left-[90px] z-10 px-2 py-1.5 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
+            <td className="sticky left-[200px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
+            <td className="sticky left-[320px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
+            <td className="px-2 py-1.5 border-r border-slate-200/50">
+                <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                    row.estado.toLowerCase().includes('entregada') ? 'text-green-800 bg-green-100/60' :
+                    row.estado.toLowerCase().includes('transito') || row.estado.toLowerCase().includes('tránsito') ? 'text-amber-800 bg-amber-100/60' :
+                    row.estado.toLowerCase().includes('produccion') || row.estado.toLowerCase().includes('producción') ? 'text-orange-800 bg-orange-100/60' :
+                    'text-slate-600 bg-slate-100/60'
                 }`}>
                     {row.estado}
                 </span>
             </td>
-            <td className="px-5 py-5 text-xs font-bold text-slate-600 border-r border-slate-200/50 truncate max-w-[200px]">{row.vendedor}</td>
-            <td className="px-5 py-5 text-xs font-black text-slate-400 text-center border-r border-slate-200/50 bg-slate-50/50">{row.itemIdx}</td>
-            <td className="px-5 py-5 border-r border-slate-200/50 truncate max-w-[380px]">
-                <div className="flex flex-col gap-1.5">
-                    <span className="text-[11px] font-black text-primary/40 tracking-widest">{row.codigo}</span>
-                    <span className="text-xs font-extrabold text-slate-700 leading-tight truncate" title={row.producto}>{row.producto}</span>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.vendedor}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-slate-400 text-center border-r border-slate-200/50 bg-slate-50/50">{row.itemIdx}</td>
+            <td className="px-2 py-1.5 border-r border-slate-200/50 truncate">
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-primary/40 tracking-wide">{row.codigo}</span>
+                    <span className="text-[10px] font-extrabold text-slate-700 leading-tight truncate" title={row.producto}>{row.producto}</span>
                 </div>
             </td>
-            <td className="px-5 py-5 text-sm font-black text-center text-primary border-r border-slate-200/50 whitespace-nowrap">{row.cantidad}</td>
-            <td className="px-5 py-5 text-sm font-black text-center text-indigo-600 border-r border-slate-200/50 bg-indigo-50/20 whitespace-nowrap">{row.cantFacturada}</td>
-            <td className="px-5 py-5 text-sm font-black text-center text-emerald-600 border-r border-slate-200/50 bg-emerald-50/20 whitespace-nowrap">{row.cantDespacho}</td>
-            <td className="px-5 py-5 text-sm font-black text-center text-amber-600 border-r border-slate-200/50 bg-amber-50/20 whitespace-nowrap">{row.cantProduccion}</td>
-            <td className="px-5 py-5 text-sm font-black text-center text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{row.cantPlanificada}</td>
-            <td className="px-5 py-5 text-xs font-black text-right text-violet-700 border-r border-slate-200/50 bg-violet-50/20 whitespace-nowrap">{row.precioUnitario != null ? `$ ${row.precioUnitario.toLocaleString('en-US')}` : ''}</td>
-            <td className="px-5 py-5 text-xs font-black text-right text-violet-800 border-r border-slate-200/50 bg-violet-50/30 whitespace-nowrap">{row.valorTotal != null ? `$ ${row.valorTotal.toLocaleString('en-US')}` : ''}</td>
-            <td className="px-5 py-5 text-xs font-bold text-slate-600 border-r border-slate-200/50 truncate max-w-[200px]">{row.transportador}</td>
-            <td className="px-5 py-5 text-xs font-bold text-slate-700 border-r border-slate-200/50 font-mono tracking-widest truncate max-w-[180px]">{row.guia}</td>
-            <td className="px-5 py-5 text-[11px] font-bold text-slate-500 border-r border-slate-200/50">{row.fechaIngreso}</td>
-            <td className="px-5 py-5 text-[11px] font-black text-emerald-600 border-r border-slate-200/50">{row.fechaRealDespacho}</td>
-            <td className="px-5 py-5 text-[11px] font-bold text-slate-600 border-r border-slate-200/50">{row.fechaEstimada}</td>
-            <td className="px-5 py-5 text-[11px] font-black text-emerald-700 border-r border-slate-200/50">
-                <div className="flex items-center gap-2">
-                    {row.isRealEntrega && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" />}
+            <td className="px-1 py-1.5 text-[11px] font-black text-center text-primary border-r border-slate-200/50 whitespace-nowrap">{row.cantidad}</td>
+            <td className="px-1 py-1.5 text-[11px] font-black text-center text-indigo-600 border-r border-slate-200/50 bg-indigo-50/20 whitespace-nowrap">{row.cantFacturada}</td>
+            <td className="px-1 py-1.5 text-[11px] font-black text-center text-emerald-600 border-r border-slate-200/50 bg-emerald-50/20 whitespace-nowrap">{row.cantDespacho}</td>
+            <td className="px-1 py-1.5 text-[11px] font-black text-center text-amber-600 border-r border-slate-200/50 bg-amber-50/20 whitespace-nowrap">{row.cantProduccion}</td>
+            <td className="px-1 py-1.5 text-[11px] font-black text-center text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{row.cantPlanificada}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-right text-violet-700 border-r border-slate-200/50 bg-violet-50/20 whitespace-nowrap">{row.precioUnitario != null ? `$ ${row.precioUnitario.toLocaleString('en-US')}` : ''}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-right text-violet-800 border-r border-slate-200/50 bg-violet-50/30 whitespace-nowrap">{row.valorTotal != null ? `$ ${row.valorTotal.toLocaleString('en-US')}` : ''}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.transportador}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-700 border-r border-slate-200/50 font-mono tracking-wide truncate">{row.guia}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{row.fechaIngreso}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-emerald-600 border-r border-slate-200/50 whitespace-nowrap">{row.fechaRealDespacho}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap">{row.fechaEstimada}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-emerald-700 border-r border-slate-200/50 whitespace-nowrap">
+                <div className="flex items-center gap-1">
+                    {row.isRealEntrega && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />}
                     {row.fechaEntrega}
                 </div>
             </td>
-            <td className="px-5 py-5 text-xs font-black text-blue-800 bg-blue-50/50 border-r border-blue-100/50 font-mono tracking-widest">{row.factura}</td>
-            <td className="px-5 py-5 text-xs font-bold text-blue-600 bg-blue-50/50 whitespace-nowrap">{row.fechaFactura}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-blue-800 bg-blue-50/50 border-r border-blue-100/50 font-mono tracking-wide">{row.factura}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50/50 whitespace-nowrap">{row.fechaFactura}</td>
         </tr>
     );
 });
@@ -210,41 +210,68 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
     };
 
     const SortIcon = ({ colKey }: { colKey: string }) => {
-        if (sortConfig.key !== colKey) return <svg className="w-3 h-3 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5zM5 12l5 5 5-5H5z"/></svg>;
-        return <svg className={`w-3 h-3 text-white ${sortConfig.direction === 'desc' ? 'rotate-180' : ''} transition-transform`} fill="currentColor" viewBox="0 0 20 20"><path d="M5 15l5-5 5 5H5z"/></svg>;
+        if (sortConfig.key !== colKey) return <svg className="w-2.5 h-2.5 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5zM5 12l5 5 5-5H5z"/></svg>;
+        return <svg className={`w-2.5 h-2.5 text-white ${sortConfig.direction === 'desc' ? 'rotate-180' : ''} transition-transform`} fill="currentColor" viewBox="0 0 20 20"><path d="M5 15l5-5 5 5H5z"/></svg>;
     };
+
+    // Column definitions — COMPACTO
+    const columns = [
+        { key: 'ov', label: 'OV', width: '90px', sticky: 'left-0', z: 'z-[30]' },
+        { key: 'oc', label: 'OC', width: '110px', sticky: 'left-[90px]', z: 'z-[30]' },
+        { key: 'nit', label: 'Cód. Cliente', width: '120px', sticky: 'left-[200px]', z: 'z-[30]' },
+        { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[320px]', z: 'z-[30]' },
+        { key: 'estado', label: 'Estado', width: '130px' },
+        { key: 'vendedor', label: 'Vendedor', width: '140px' },
+        { key: 'itemIdx', label: 'IT', width: '40px', preventTranslation: true },
+        { key: 'producto', label: 'Producto', width: '250px' },
+        { key: 'cantidad', label: 'Ped', width: '50px' },
+        { key: 'cantFacturada', label: 'Fac', width: '50px' },
+        { key: 'cantDespacho', label: 'Des', width: '50px' },
+        { key: 'cantProduccion', label: 'Pro', width: '50px' },
+        { key: 'cantPlanificada', label: 'Pla', width: '50px' },
+        { key: 'precioUnitario', label: 'Precio U.', width: '100px' },
+        { key: 'valorTotal', label: 'Valor Total', width: '110px' },
+        { key: 'transportador', label: 'Transportadora', width: '140px' },
+        { key: 'guia', label: '# Guía', width: '110px' },
+        { key: 'fechaIngreso', label: 'F. Registro', width: '95px' },
+        { key: 'fechaRealDespacho', label: 'F. Despacho', width: '95px' },
+        { key: 'fechaEstimada', label: 'F. Estimada', width: '95px' },
+        { key: 'fechaEntrega', label: 'F. Entrega', width: '95px' },
+        { key: 'factura', label: 'Factura', width: '100px' },
+        { key: 'fechaFactura', label: 'F. Factura', width: '90px' },
+    ];
 
     return (
         <div className="w-full bg-slate-50 relative animate-in fade-in duration-700">
-            {/* Table Actions Header */}
-            <div className="flex flex-col gap-2 mb-2 bg-transparent">
-                <div className="px-6 py-2 flex justify-end items-center gap-4">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm border border-slate-200/50">
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{filteredData.length} ÍTEMS</span>
+            {/* Table Actions Header — compacto */}
+            <div className="flex flex-col gap-1 mb-1 bg-transparent">
+                <div className="px-4 py-1 flex justify-end items-center gap-3">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg shadow-sm border border-slate-200/50">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{filteredData.length} ÍTEMS</span>
                     </div>
                     <button 
                         onClick={() => { setColumnFilters({}); setSortConfig({ key: 'fechaIngreso', direction: 'desc' }); }}
-                        className="px-5 py-2.5 bg-white hover:bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 shadow-sm active:scale-95"
+                        className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-600 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border border-slate-200 shadow-sm active:scale-95"
                     >
                         Limpiar Filtros
                     </button>
                 </div>
 
                 {/* Top Synchronized Scrollbar */}
-                <div className="px-6 w-full">
+                <div className="px-4 w-full">
                     <div 
                         ref={topScrollRef}
                         onScroll={handleTopScroll}
-                        className="overflow-x-auto w-full custom-scrollbar bg-white/50 border border-slate-200/50 rounded-t-xl hover:bg-slate-100/50 transition-colors"
-                        style={{ paddingBottom: '2px' }}
+                        className="overflow-x-auto w-full custom-scrollbar bg-white/50 border border-slate-200/50 rounded-t-lg hover:bg-slate-100/50 transition-colors"
+                        style={{ paddingBottom: '1px' }}
                     >
-                        <div style={{ width: tableWidth ? `${tableWidth}px` : '100%', height: '8px' }} />
+                        <div style={{ width: tableWidth ? `${tableWidth}px` : '100%', height: '6px' }} />
                     </div>
                 </div>
             </div>
 
-            {/* Excel-like Grid - No max-height so it scrolls natively on window */}
+            {/* Excel-like Grid */}
             <div 
                 ref={scrollContainerRef}
                 onScroll={handleMainScroll}
@@ -253,56 +280,32 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                 <table className="w-full border-collapse table-fixed">
                     <thead>
                         <tr className="bg-[#0078D4] text-white sticky top-0 z-20 shadow-lg">
-                            {[
-                                { key: 'ov', label: 'Orden Venta', width: '150px', sticky: 'left-0', z: 'z-[30]' },
-                                { key: 'oc', label: 'Orden Compra', width: '150px', sticky: 'left-[150px]', z: 'z-[30]' },
-                                { key: 'nit', label: 'Cód. Cliente', width: '150px', sticky: 'left-[300px]', z: 'z-[30]' },
-                                { key: 'cliente', label: 'Nombre del Cliente', width: '340px', sticky: 'left-[450px]', z: 'z-[30]' },
-                                { key: 'estado', label: 'Estado', width: '180px' },
-                                { key: 'vendedor', label: 'Vendedor', width: '200px' },
-                                { key: 'itemIdx', label: 'ITEM', width: '80px', preventTranslation: true },
-                                { key: 'producto', label: 'Descripción de Producto', width: '380px' },
-                                { key: 'cantidad', label: 'Ped.', width: '70px' },
-                                { key: 'cantFacturada', label: 'Fact.', width: '70px' },
-                                { key: 'cantDespacho', label: 'Desp.', width: '70px' },
-                                { key: 'cantProduccion', label: 'Prod.', width: '70px' },
-                                { key: 'cantPlanificada', label: 'Plan.', width: '70px' },
-                                { key: 'precioUnitario', label: 'Precio Unit.', width: '120px' },
-                                { key: 'valorTotal', label: 'Valor Total', width: '120px' },
-                                { key: 'transportador', label: 'Transportadora', width: '200px' },
-                                { key: 'guia', label: '# Guía', width: '180px' },
-                                { key: 'fechaIngreso', label: 'F. Registro', width: '140px' },
-                                { key: 'fechaRealDespacho', label: 'Despacho Real', width: '140px' },
-                                { key: 'fechaEstimada', label: 'Estimada', width: '140px' },
-                                { key: 'fechaEntrega', label: 'Entrega Real', width: '140px' },
-                                { key: 'factura', label: 'Factura', width: '150px' },
-                                { key: 'fechaFactura', label: 'F. Factura', width: '130px' },
-                            ].map(col => (
+                            {columns.map(col => (
                                 <th 
                                     key={col.key}
-                                    className={`px-5 py-5 text-left border-r border-white/20 last:border-0 relative group/th ${
+                                    className={`px-2 py-2 text-left border-r border-white/20 last:border-0 relative group/th ${
                                         col.sticky ? `sticky ${col.sticky} ${col.z || 'z-20'} bg-[#006bd1]` : 'sticky top-0 z-20'
-                                    } ${col.key === 'cliente' ? 'shadow-[8px_0_15px_-4px_rgba(0,0,0,0.15)] border-r-white/40' : ''}`}
+                                    } ${col.key === 'cliente' ? 'shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] border-r-white/40' : ''}`}
                                     style={{ width: col.width }}
                                 >
-                                    <div className="flex flex-col gap-3 overflow-hidden min-w-0">
+                                    <div className="flex flex-col gap-1 overflow-hidden min-w-0">
                                         <div 
                                             className={`flex items-center justify-between cursor-pointer group-hover/th:text-white/90 transition-colors ${(col as any).preventTranslation ? 'notranslate' : ''}`}
                                             translate={(col as any).preventTranslation ? 'no' : undefined}
                                             onClick={() => handleSort(col.key)}
                                         >
                                             <span 
-                                                className="text-[11px] font-black uppercase tracking-widest leading-tight truncate block flex-1"
+                                                className="text-[9px] font-black uppercase tracking-wider leading-tight truncate block flex-1"
                                                 title={col.label}
                                             >
-                                                {col.label === 'ITEM' ? 'I\u200BT\u200BE\u200BM' : col.label}
+                                                {col.label === 'IT' ? 'I\u200BT' : col.label}
                                             </span>
                                             <SortIcon colKey={col.key} />
                                         </div>
                                         <input 
                                             type="text" 
-                                            placeholder="..."
-                                            className="w-full px-2.5 py-2 bg-white/10 border border-white/10 rounded-lg text-[11px] font-bold text-white placeholder-white/40 outline-none focus:bg-white/25 focus:border-white/40 transition-all shadow-inner"
+                                            placeholder="…"
+                                            className="w-full px-1.5 py-1 bg-white/10 border border-white/10 rounded text-[9px] font-bold text-white placeholder-white/30 outline-none focus:bg-white/25 focus:border-white/40 transition-all"
                                             value={columnFilters[col.key] || ''}
                                             onChange={(e) => handleFilterChange(col.key, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
@@ -312,7 +315,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-slate-100">
                         {filteredData.slice(0, displayLimit).map((row) => (
                             <TableRow 
                                 key={row.id} 
@@ -324,47 +327,46 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                     {/* Footer con suma de Valor Total */}
                     <tfoot className="sticky bottom-0 z-20">
                         <tr className="bg-[#0A2A5C] text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
-                            {/* Columnas 1-4 sticky */}
-                            <td className="sticky left-0 z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10" />
-                            <td className="sticky left-[150px] z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10" />
-                            <td className="sticky left-[300px] z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10" />
-                            <td className="sticky left-[450px] z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10 shadow-[8px_0_15px_-4px_rgba(0,0,0,0.15)]">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">TOTAL VALOR</span>
+                            <td className="sticky left-0 z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
+                            <td className="sticky left-[90px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
+                            <td className="sticky left-[200px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
+                            <td className="sticky left-[320px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10 shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)]">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/60">TOTAL VALOR</span>
                             </td>
-                            {/* Columnas 5-13 vacías (estado, vendedor, item, producto, ped, fact, desp, prod, plan) */}
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            {/* Columna 14: Precio Unit. vacía */}
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            {/* Columna 15: VALOR TOTAL — aquí va la suma */}
-                            <td className="px-5 py-4 border-r border-white/10 text-right">
-                                <div className="flex flex-col items-end gap-0.5">
-                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Σ Total</span>
-                                    <span className="text-sm font-black text-emerald-400 tracking-tight">$ {sumaValorTotal.toLocaleString('en-US')}</span>
+                            {/* Columnas 5-13 vacías */}
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            {/* Precio Unit. vacía */}
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            {/* VALOR TOTAL — suma */}
+                            <td className="px-2 py-2 border-r border-white/10 text-right">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Σ Total</span>
+                                    <span className="text-xs font-black text-emerald-400 tracking-tight">$ {sumaValorTotal.toLocaleString('en-US')}</span>
                                 </div>
                             </td>
-                            {/* Columnas restantes 16-23 vacías */}
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4 border-r border-white/10" />
-                            <td className="px-5 py-4" />
+                            {/* Columnas restantes vacías */}
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2 border-r border-white/10" />
+                            <td className="px-2 py-2" />
                         </tr>
                     </tfoot>
                 </table>
                 {filteredData.length > displayLimit && (
-                    <div className="py-4 text-center bg-slate-50/50 border-t border-slate-100">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">
+                    <div className="py-2 text-center bg-slate-50/50 border-t border-slate-100">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">
                             Cargando más pedidos... ({displayLimit} de {filteredData.length})
                         </p>
                     </div>
