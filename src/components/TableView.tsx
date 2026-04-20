@@ -192,6 +192,11 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
         }
     }, [filteredData, displayLimit]);
 
+    // Suma del Valor Total de todos los ítems filtrados
+    const sumaValorTotal = useMemo(() => {
+        return filteredData.reduce((acc, row) => acc + (row.valorTotal ?? 0), 0);
+    }, [filteredData]);
+
 
     const handleSort = (key: string) => {
         setSortConfig(prev => ({
@@ -316,6 +321,46 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                             />
                         ))}
                     </tbody>
+                    {/* Footer con suma de Valor Total */}
+                    <tfoot className="sticky bottom-0 z-20">
+                        <tr className="bg-[#0A2A5C] text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
+                            {/* Columnas 1-4 sticky */}
+                            <td className="sticky left-0 z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10" />
+                            <td className="sticky left-[150px] z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10" />
+                            <td className="sticky left-[300px] z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10" />
+                            <td className="sticky left-[450px] z-[30] bg-[#0A2A5C] px-5 py-4 border-r border-white/10 shadow-[8px_0_15px_-4px_rgba(0,0,0,0.15)]">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">TOTAL VALOR</span>
+                            </td>
+                            {/* Columnas 5-13 vacías (estado, vendedor, item, producto, ped, fact, desp, prod, plan) */}
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            {/* Columna 14: Precio Unit. vacía */}
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            {/* Columna 15: VALOR TOTAL — aquí va la suma */}
+                            <td className="px-5 py-4 border-r border-white/10 text-right">
+                                <div className="flex flex-col items-end gap-0.5">
+                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Σ Total</span>
+                                    <span className="text-sm font-black text-emerald-400 tracking-tight">$ {sumaValorTotal.toLocaleString('en-US')}</span>
+                                </div>
+                            </td>
+                            {/* Columnas restantes 16-23 vacías */}
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4 border-r border-white/10" />
+                            <td className="px-5 py-4" />
+                        </tr>
+                    </tfoot>
                 </table>
                 {filteredData.length > displayLimit && (
                     <div className="py-4 text-center bg-slate-50/50 border-t border-slate-100">
