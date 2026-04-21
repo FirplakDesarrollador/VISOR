@@ -29,7 +29,7 @@ export default function UserManagement({ onClose }: UserManagementProps) {
         setUpdating(userId);
         const success = await updateUserRole(userId, newRole);
         if (success) {
-            setUsers(users.map(u => u.id === userId ? { ...u, rol_visor: newRole } : u));
+            setUsers(users.map(u => u.id === userId ? { ...u, Rol_Visor: newRole } : u));
         }
         setUpdating(null);
     };
@@ -72,25 +72,25 @@ export default function UserManagement({ onClose }: UserManagementProps) {
                                     <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-black text-slate-800 tracking-tight">{user.nombre || 'Sin Nombre'}</span>
-                                                <span className="text-xs font-bold text-slate-400">{user.email}</span>
+                                                <span className="text-sm font-black text-slate-800 tracking-tight">{`${user.nombres || ''} ${user.apellidos || ''}`.trim() || 'Sin Nombre'}</span>
+                                                <span className="text-xs font-bold text-slate-400">{user.correo}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                                user.rol_visor === 'Administrador' ? 'bg-purple-100 text-purple-700' :
-                                                user.rol_visor === 'Backoffice' ? 'bg-blue-100 text-blue-700' :
-                                                user.rol_visor === 'Asesor' ? 'bg-emerald-100 text-emerald-700' :
+                                                user.Rol_Visor === 'Administrador' ? 'bg-purple-100 text-purple-700' :
+                                                user.Rol_Visor === 'Backoffice' || user.Rol_Visor === 'BackOffice' ? 'bg-blue-100 text-blue-700' :
+                                                user.Rol_Visor === 'Asesor' ? 'bg-emerald-100 text-emerald-700' :
                                                 'bg-slate-100 text-slate-600'
                                             }`}>
-                                                {user.rol_visor || 'SIN ROL'}
+                                                {user.Rol_Visor || 'SIN ROL'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <select 
                                                     disabled={updating === user.id}
-                                                    value={user.rol_visor || ''}
+                                                    value={user.Rol_Visor || ''}
                                                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                                                     className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer disabled:opacity-50"
                                                 >

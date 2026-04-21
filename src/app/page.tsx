@@ -58,7 +58,7 @@ export default function Home() {
           // Buscar rol en la base de datos (Prioridad Máxima)
           const { data: dbUser } = await supabase
             .from('Usuarios')
-            .select('Rol_Visor, nombre')
+            .select('Rol_Visor, nombres, apellidos')
             .eq('correo', userEmail)
             .single();
 
@@ -95,10 +95,12 @@ export default function Home() {
             normalizedRole = 'Backoffice';
           }
           
+          const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
+
           setUser({
             id: session.user.id,
             email: userEmail,
-            name: dbUser?.nombre || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+            name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
             role: normalizedRole
           });
         }
@@ -117,7 +119,7 @@ export default function Home() {
         
         const { data: dbUser } = await supabase
           .from('Usuarios')
-          .select('Rol_Visor, nombre')
+          .select('Rol_Visor, nombres, apellidos')
           .eq('correo', userEmail)
           .single();
 
@@ -151,10 +153,12 @@ export default function Home() {
           normalizedRole = 'Backoffice';
         }
 
+        const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
+
         setUser({
           id: session.user.id,
           email: userEmail,
-          name: dbUser?.nombre || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+          name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
           role: normalizedRole
         });
       } else {
