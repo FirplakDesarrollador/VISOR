@@ -54,6 +54,15 @@ export default function Home() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const userEmail = session.user.email || '';
+          
+          // Buscar rol en la base de datos (Prioridad Máxima)
+          const { data: dbUser } = await supabase
+            .from('Usuarios')
+            .select('Rol_Visor, nombre')
+            .eq('correo', userEmail)
+            .single();
+
+          const dbRole = dbUser?.Rol_Visor;
           const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
           
           // Elevación de privilegios: Si el correo es de los autorizados o el rol contiene "back"
@@ -75,15 +84,21 @@ export default function Home() {
             'paula.guevara@firplak.com',
             'analista2.desarrollo@firplak.com',
           ];
-          const isAdmin = rawRole.toLowerCase().includes('admin');
-          const isBackoffice = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back');
-          
-          const normalizedRole = isAdmin ? 'Administrador' : (isBackoffice ? 'Backoffice' : 'Asesor');
+
+          // Jerarquía: DB Role > Admin Metadata > Email List > Metadata
+          let normalizedRole = 'Asesor';
+          if (dbRole) {
+            normalizedRole = dbRole;
+          } else if (rawRole.toLowerCase().includes('admin')) {
+            normalizedRole = 'Administrador';
+          } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
+            normalizedRole = 'Backoffice';
+          }
           
           setUser({
             id: session.user.id,
             email: userEmail,
-            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+            name: dbUser?.nombre || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
             role: normalizedRole
           });
         }
@@ -96,9 +111,17 @@ export default function Home() {
     checkInitialAuth();
 
     // 3. Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const userEmail = session.user.email || '';
+        
+        const { data: dbUser } = await supabase
+          .from('Usuarios')
+          .select('Rol_Visor, nombre')
+          .eq('correo', userEmail)
+          .single();
+
+        const dbRole = dbUser?.Rol_Visor;
         const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
         const backofficeEmails = [
             'mayerly.marin@firplak.com',
@@ -118,15 +141,20 @@ export default function Home() {
             'paula.guevara@firplak.com',
             'analista2.desarrollo@firplak.com',
           ];
-        const isAdmin = rawRole.toLowerCase().includes('admin');
-        const isBackoffice = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back');
-        
-        const normalizedRole = isAdmin ? 'Administrador' : (isBackoffice ? 'Backoffice' : 'Asesor');
+
+        let normalizedRole = 'Asesor';
+        if (dbRole) {
+          normalizedRole = dbRole;
+        } else if (rawRole.toLowerCase().includes('admin')) {
+          normalizedRole = 'Administrador';
+        } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
+          normalizedRole = 'Backoffice';
+        }
 
         setUser({
           id: session.user.id,
           email: userEmail,
-          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+          name: dbUser?.nombre || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
           role: normalizedRole
         });
       } else {
