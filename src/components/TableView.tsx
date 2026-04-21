@@ -23,8 +23,8 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
         >
             <td className="sticky left-0 z-10 px-2 py-1.5 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.ov}</td>
             <td className="sticky left-[90px] z-10 px-2 py-1.5 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
-            <td className="sticky left-[200px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
-            <td className="sticky left-[320px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
+            <td className="sticky left-[170px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
+            <td className="sticky left-[290px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
             <td className={`px-2 py-1.5 text-[9px] font-black uppercase tracking-wider border-r border-slate-200/50 ${
                 row.estado.toLowerCase().includes('entregada') ? 'text-green-700' :
                 row.estado.toLowerCase().includes('transito') || row.estado.toLowerCase().includes('tránsito') ? 'text-amber-600' :
@@ -218,7 +218,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
         { key: 'oc', label: 'OC', width: '80px', sticky: 'left-[90px]', z: 'z-[30]' },
         { key: 'nit', label: 'Cód. Cliente', width: '120px', sticky: 'left-[170px]', z: 'z-[30]' },
         { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[290px]', z: 'z-[30]' },
-        { key: 'estado', label: 'Estado', width: '110px' },
+        { key: 'estado', label: 'Estado', width: '120px' },
         { key: 'vendedor', label: 'Vendedor', width: '110px' },
         { key: 'itemIdx', label: 'IT', width: '40px', preventTranslation: true },
         { key: 'producto', label: 'Producto', width: '250px' },
@@ -327,8 +327,8 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                         <tr className="bg-[#0A2A5C] text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
                             <td className="sticky left-0 z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
                             <td className="sticky left-[90px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
-                            <td className="sticky left-[200px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
-                            <td className="sticky left-[320px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10 shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)]">
+                            <td className="sticky left-[170px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
+                            <td className="sticky left-[290px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10 shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)]">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/60">TOTAL VALOR</span>
                             </td>
                             {/* Columnas 5-13 vacías */}
