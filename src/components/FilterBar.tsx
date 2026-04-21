@@ -153,7 +153,8 @@ export default function FilterBar({
                     {user ? (
                         <div className="flex items-center gap-2 pl-2 border-l border-slate-100">
                             <div className="text-right hidden sm:block">
-                                <p className="text-[9px] font-black text-primary leading-none uppercase tracking-tight">{user.name || 'Usuario'}</p>
+                                <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Usuario</p>
+                                <p className="text-[9px] font-black text-primary leading-none uppercase tracking-tight">{user.name || 'Invitado'}</p>
                                 <span className="text-[8px] font-bold text-slate-400 tracking-wider">{user.role}</span>
                             </div>
                             <button
