@@ -111,6 +111,7 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
                 fecha_factura: cleanString(row["Fecha de la factura"]),
                 envio: cleanString(row["envio"] || row["Envio"] || row["envío"] || row["Envío"]),
                 estado_despacho: cleanString(row["Estado despacho"]),
+                estado_raw: cleanString(row["Estado"]),
                 normalizedStatus: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
             });
         }
@@ -160,6 +161,18 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             cantidad_despacho: cantDespacho,
             cantidad_produccion: cantProduccion,
             cantidad_planificada: cantPlanificado,
+            precio_unitario: (() => {
+                const v = cleanString(row["Precio por unidad"]);
+                if (!v) return undefined;
+                const n = parseFloat(v.replace(/,/g, ''));
+                return isNaN(n) ? undefined : n;
+            })(),
+            valor_total: (() => {
+                const v = cleanString(row["Valor total"]);
+                if (!v) return undefined;
+                const n = parseFloat(v.replace(/,/g, ''));
+                return isNaN(n) ? undefined : n;
+            })(),
             estado_produccion: isCompleto ? 'Completo' :
                               cantFacturada >= cantPedida && cantPedida > 0 ? 'Entregada' :
                               cantProduccion > 0 ? 'En Producción' : 'Pendiente',
@@ -168,7 +181,16 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             envio: row["envio"] || row["Envio"] || row["envío"] || row["Envío"] || undefined,
             estado_orden: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
             numero_guia: formatLargeNumber(row["# GUIA"]),
-            transportador: row["Transportador"] || undefined,
+            transportador: cleanString(row["Transportador"]),
+            estado_raw: cleanString(row["Estado"]),
+            // Per-item row data — preserva integridad de cada fila de la BD
+            remision: cleanString(row["# Remisión"]),
+            fecha_real_despacho: cleanString(row["Fecha real de despacho"]),
+            fecha_entrega: cleanString(row["Fecha de entrega"]),
+            numero_factura: formatLargeNumber(row["# Factura"]),
+            fecha_factura: cleanString(row["Fecha de la factura"]),
+            estado_despacho: cleanString(row["Estado despacho"]),
+            fecha_estimada_entrega: cleanString(row["Fecha estimada de entrega (real)"]) || cleanString(row["Fecha estimada de entrega"]),
         });
 
         // Hipótesis 3: Si un ítem ya tiene guía pero la orden no, actualizarla

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import OrderCard from '@/components/OrderCard';
 import TableView from '@/components/TableView';
@@ -9,6 +9,7 @@ import Dashboard from '@/components/Dashboard';
 import FilterBar, { SearchFilters } from '@/components/FilterBar';
 import LoginModal from '@/components/LoginModal';
 import Pagination from '@/components/Pagination';
+import UserManagement from '@/components/UserManagement';
 import { supabase } from '@/services/supabase';
 import { getOrdersFromVisor } from '@/services/visorService';
 import { storageService } from '@/services/storageService';
@@ -20,7 +21,7 @@ export default function Home() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos'>('pedidos');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos' | 'config'>('pedidos');
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loading, setLoading] = useState(true); // Start as loading to avoid flash
@@ -31,7 +32,7 @@ export default function Home() {
   const [filters, setFilters] = useState<SearchFilters>({
     ov: '', oc: '', clientName: '', nit: ''
   });
-  const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(null);
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>('EnProceso');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
 
   const itemsPerPage = 12;
@@ -53,18 +54,53 @@ export default function Home() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const userEmail = session.user.email || '';
+          
+          // Buscar rol en la base de datos (Prioridad Máxima)
+          const { data: dbUser } = await supabase
+            .from('Usuarios')
+            .select('Rol_Visor, nombres, apellidos')
+            .eq('correo', userEmail)
+            .single();
+
+          const dbRole = dbUser?.Rol_Visor;
           const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
           
           // Elevación de privilegios: Si el correo es de los autorizados o el rol contiene "back"
-          const backofficeEmails = ['mayerly.marin@firplak.com', 'ximena.ballestas@firplak.com', 'tatiana.duque@firplak.com', 'auxiliar.digitacion@firplak.com'];
-          const normalizedRole = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back') 
-            ? 'Backoffice' 
-            : 'Asesor';
+          const backofficeEmails = [
+            'mayerly.marin@firplak.com',
+            'ximena.ballestas@firplak.com',
+            'tatiana.duque@firplak.com',
+            'auxiliar.digitacion@firplak.com',
+            'luis.escobar@firplak.com',
+            'daniela.castro@firplak.com',
+            'juan.correa@firplak.com',
+            'marketplace@firplak.com',
+            'manuela.henao@firplak.com',
+            'ismael.correa@firplak.com',
+            'alejandro.isaza@firplak.com',
+            'servicios@firplak.com',
+            'servicios2@firplak.com',
+            'isabel.jaramillo@firplak.com',
+            'paula.guevara@firplak.com',
+            'analista2.desarrollo@firplak.com',
+          ];
+
+          // Jerarquía: DB Role > Admin Metadata > Email List > Metadata
+          let normalizedRole = 'Asesor';
+          if (dbRole) {
+            normalizedRole = dbRole;
+          } else if (rawRole.toLowerCase().includes('admin')) {
+            normalizedRole = 'Administrador';
+          } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
+            normalizedRole = 'Backoffice';
+          }
           
+          const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
+
           setUser({
             id: session.user.id,
             email: userEmail,
-            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+            name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
             role: normalizedRole
           });
         }
@@ -77,19 +113,52 @@ export default function Home() {
     checkInitialAuth();
 
     // 3. Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const userEmail = session.user.email || '';
+        
+        const { data: dbUser } = await supabase
+          .from('Usuarios')
+          .select('Rol_Visor, nombres, apellidos')
+          .eq('correo', userEmail)
+          .single();
+
+        const dbRole = dbUser?.Rol_Visor;
         const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
-        const backofficeEmails = ['mayerly.marin@firplak.com', 'ximena.ballestas@firplak.com', 'tatiana.duque@firplak.com', 'auxiliar.digitacion@firplak.com'];
-        const normalizedRole = backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back') 
-          ? 'Backoffice' 
-          : 'Asesor';
+        const backofficeEmails = [
+            'mayerly.marin@firplak.com',
+            'ximena.ballestas@firplak.com',
+            'tatiana.duque@firplak.com',
+            'auxiliar.digitacion@firplak.com',
+            'luis.escobar@firplak.com',
+            'daniela.castro@firplak.com',
+            'juan.correa@firplak.com',
+            'marketplace@firplak.com',
+            'manuela.henao@firplak.com',
+            'ismael.correa@firplak.com',
+            'alejandro.isaza@firplak.com',
+            'servicios@firplak.com',
+            'servicios2@firplak.com',
+            'isabel.jaramillo@firplak.com',
+            'paula.guevara@firplak.com',
+            'analista2.desarrollo@firplak.com',
+          ];
+
+        let normalizedRole = 'Asesor';
+        if (dbRole) {
+          normalizedRole = dbRole;
+        } else if (rawRole.toLowerCase().includes('admin')) {
+          normalizedRole = 'Administrador';
+        } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
+          normalizedRole = 'Backoffice';
+        }
+
+        const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
 
         setUser({
           id: session.user.id,
           email: userEmail,
-          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+          name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
           role: normalizedRole
         });
       } else {
@@ -113,61 +182,101 @@ export default function Home() {
   }, [filters, activeStatusFilter, currentPage, hasSearched]);
 
   // --- HELPERS ---
-  const applyFiltering = useCallback((data: Order[], searchFilters: SearchFilters, statusFilter: string | null) => {
-    const normalize = (str: string) =>
-      (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const normalize = (str: string) =>
+    (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    let matches = data;
+  const isItemInStatus = (item: any, order: Order, status: string) => {
+    const itemState = normalize(item.estado_raw || order.estado_raw || '');
+    const itemNormalized = normalize(item.estado_orden || order.estado_orden || '');
 
-    if (user) {
-      matches = data.filter(order => {
-        const ov = normalize(order.numero_orden_venta);
-        const searchOV = normalize(searchFilters.ov);
-        const oc = normalize(order.numero_orden_compra || '');
-        const searchOC = normalize(searchFilters.oc);
-        const client = normalize(order.nombre_cliente);
-        const searchClient = normalize(searchFilters.clientName);
-        const nit = (order.nit_cliente || '').trim();
-        const searchNIT = (searchFilters.nit || '').trim();
+    if (status.startsWith('raw:')) {
+      const rawVal = status.replace('raw:', '').toLowerCase();
+      return itemState.includes(rawVal);
+    } 
+    
+    switch (status) {
+      case 'EnProceso':
+        return itemNormalized.includes('pendiente') || itemNormalized === '' || itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
+      case 'Pendiente':
+        return itemNormalized.includes('pendiente') || itemNormalized === '';
+      case 'En Producción':
+        return itemNormalized.includes('produccion') || itemNormalized.includes('proceso');
+      case 'Transito':
+        return (itemNormalized.includes('transito') || itemNormalized.includes('facturada') || itemNormalized.includes('despachada')) && !itemNormalized.includes('entregada');
+      case 'Entregada':
+        return itemNormalized.includes('entregada');
+      default:
+        return true;
+    }
+  };
 
-        const matchOV = !searchOV || ov.includes(searchOV);
-        const matchOC = !searchOC || oc.includes(searchOC);
-        const matchClient = !searchClient || client.includes(searchClient);
-        const matchNIT = !searchNIT || nit.includes(searchNIT);
-
-        let matchStatus = true;
-        const state = normalize(order.estado_orden);
-
-        if (statusFilter === 'Pendiente') {
-          matchStatus = state.includes('pendiente') || state === '';
-        } else if (statusFilter === 'En Producción') {
-          matchStatus = state.includes('produccion') || state.includes('proceso');
-        } else if (statusFilter === 'Transito') {
-          matchStatus = (state.includes('transito') || state.includes('facturada') || state.includes('despachada')) && !state.includes('entregada');
-        } else if (statusFilter === 'Entregada') {
-          matchStatus = state.includes('entregada');
-        }
-
-        return matchOV && matchOC && matchClient && matchNIT && matchStatus;
-      });
-    } else {
-      // Public search logic (exact match)
-      matches = data.filter(order => {
-        const matchOV = !searchFilters.ov || normalize(order.numero_orden_venta) === normalize(searchFilters.ov);
-        const matchOC = !searchFilters.oc || normalize(order.numero_orden_compra || '') === normalize(searchFilters.oc);
-        const matchNIT = !searchFilters.nit || (order.nit_cliente || '').trim() === searchFilters.nit.trim();
-        return (searchFilters.ov || searchFilters.oc || searchFilters.nit) && (matchOV && matchOC && matchNIT);
+  // 1. Searched Orders (Apply text filters only)
+  const searchedOrders = useMemo(() => {
+    if (!user) {
+      // Public search logic
+      return allOrders.filter(order => {
+        const matchOV = !filters.ov || normalize(order.numero_orden_venta) === normalize(filters.ov);
+        const matchOC = !filters.oc || normalize(order.numero_orden_compra || '') === normalize(filters.oc);
+        const matchNIT = !filters.nit || (order.nit_cliente || '').trim() === filters.nit.trim();
+        return (filters.ov || filters.oc || filters.nit) && (matchOV && matchOC && matchNIT);
       });
     }
-    // Ordenar por fecha de ingreso (Descendente - más recientes primero)
-    const sorted = [...matches].sort((a, b) => {
+
+    // Backoffice search logic
+    return allOrders.filter(order => {
+      const ov = normalize(order.numero_orden_venta);
+      const searchOV = normalize(filters.ov);
+      const oc = normalize(order.numero_orden_compra || '');
+      const searchOC = normalize(filters.oc);
+      const client = normalize(order.nombre_cliente);
+      const searchClient = normalize(filters.clientName);
+      const nit = (order.nit_cliente || '').trim();
+      const searchNIT = (filters.nit || '').trim();
+
+      const matchOV = !searchOV || ov.includes(searchOV);
+      const matchOC = !searchOC || oc.includes(searchOC);
+      const matchClient = !searchClient || client.includes(searchClient);
+      const matchNIT = !searchNIT || nit.includes(searchNIT);
+
+      return matchOV && matchOC && matchClient && matchNIT;
+    });
+  }, [allOrders, filters, user]);
+
+  // 2. Status Counts (Based on searched orders)
+  const counts = useMemo(() => {
+    return {
+      pending: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Pendiente'))).length,
+      production: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'En Producción'))).length,
+      transit: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Transito'))).length,
+      delivered: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Entregada'))).length,
+      enProceso: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'EnProceso'))).length,
+    };
+  }, [searchedOrders]);
+
+  // 3. Final Filtered Orders (Apply status filter)
+  const finalOrders = useMemo(() => {
+    let result = searchedOrders;
+
+    if (user && activeStatusFilter) {
+      result = searchedOrders.map(order => {
+        const filteredItems = order.items.filter(item => isItemInStatus(item, order, activeStatusFilter));
+        if (filteredItems.length === 0) return null;
+        return { ...order, items: filteredItems };
+      }).filter(Boolean) as Order[];
+    }
+
+    // Sort by entry date (Descending)
+    return [...result].sort((a, b) => {
       const dateA = a.fecha_ingreso || '';
       const dateB = b.fecha_ingreso || '';
       return dateB.localeCompare(dateA);
     });
+  }, [searchedOrders, activeStatusFilter, user]);
 
-    setFilteredOrders(sorted);
-  }, [user, hasSearched]);
+  // Update filteredOrders whenever finalOrders changes
+  useEffect(() => {
+    setFilteredOrders(finalOrders);
+  }, [finalOrders]);
 
   // --- DATA FETCHING ---
   // Only re-fetch when the user/role changes or session is first checked.
@@ -183,9 +292,17 @@ export default function Home() {
       
       try {
         const role = user ? user.role : 'Externo';
-        // Fallback: Si no hay nombre, intentamos usar el prefijo del email (nombre.apellido)
+
+        // Mapa explícito de correo → nombre exacto en columna Vendedor de la BD
+        // Usar cuando el nombre derivado del email no coincide con el nombre en la BD
+        const emailToVendedorName: Record<string, string> = {
+          'yaneth.rojas@firplak.com': 'Yaneth Rojas',
+        };
+
+        // Prioridad: mapa explícito > nombre de sesión > nombre derivado del email
         const nameFromEmail = user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ') : undefined;
-        const vendedorFilter = role === 'Asesor' ? (user?.name || nameFromEmail) : undefined;
+        const mappedName = user?.email ? emailToVendedorName[user.email.toLowerCase()] : undefined;
+        const vendedorFilter = role === 'Asesor' ? (mappedName || user?.name || nameFromEmail) : undefined;
 
         const data = await getOrdersFromVisor(role, vendedorFilter);
         setAllOrders(data);
@@ -199,46 +316,29 @@ export default function Home() {
     fetchOrders();
   }, [user, isSessionChecked]);
 
-  // --- LOCAL FILTERING ---
-  // This handles search and status filters locally without triggering the global loading state.
-  useEffect(() => {
-    applyFiltering(allOrders, filters, activeStatusFilter);
-  }, [allOrders, filters, activeStatusFilter, applyFiltering]);
-
-  const counts = (() => {
-    const normalize = (str: string) => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    return {
-      pending: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return s.includes('pendiente') || s === '';
-      }).length,
-      production: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return s.includes('produccion') || s.includes('proceso');
-      }).length,
-      transit: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return (s.includes('transito') || s.includes('facturada') || s.includes('despachada')) && !s.includes('entregada');
-      }).length,
-      delivered: allOrders.filter(o => {
-        const s = normalize(o.estado_orden);
-        return s.includes('entregada');
-      }).length
-    };
-  })();
+  const rawStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    allOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (item.estado_raw) statuses.add(item.estado_raw);
+      });
+      if (order.estado_raw) statuses.add(order.estado_raw);
+    });
+    return Array.from(statuses).sort();
+  }, [allOrders]);
 
   const handleSearch = (newFilters: SearchFilters = filters, statusFilter: string | null = activeStatusFilter) => {
     setHasSearched(true);
     setCurrentPage(1);
     setFilters(newFilters);
-    applyFiltering(allOrders, newFilters, statusFilter);
+    setActiveStatusFilter(statusFilter);
   };
 
   const handleDownload = () => {
-    if (allOrders.length === 0) return;
+    if (filteredOrders.length === 0) return;
 
     // 1. Preparar la data plana (aplanar órdenes con sus ítems)
-    const exportData = allOrders.flatMap(order => 
+    const exportData = filteredOrders.flatMap(order => 
       order.items.map(item => ({
         "Fecha Ingreso": order.fecha_ingreso,
         "Orden Venta": order.numero_orden_venta,
@@ -260,18 +360,20 @@ export default function Home() {
         "Cant. Despacho": item.cantidad_despacho,
         "Cant. Producción": item.cantidad_produccion,
         "Cant. Planificada": item.cantidad_planificada,
+        "Precio Unitario": item.precio_unitario ?? '',
+        "Valor Total": item.valor_total ?? '',
         "Estado Prod.": item.estado_produccion || 'Pendiente',
         "Fecha Despacho Plan": order.fecha_plan_despacho,
-        "Fecha Real Despacho": order.fecha_real_despacho || '',
-        "Transportadora": order.transportador || '',
-        "Guía de Seguimiento": order.numero_guia || '',
-        "Estado Despacho": order.estado_despacho || '',
-        "Fecha Estimada Entrega": order.fecha_estimada_entrega || '',
-        "Fecha Real Entrega": order.fecha_entrega || '',
+        "Fecha Real Despacho": item.fecha_real_despacho || '',
+        "Transportadora": item.transportador || '',
+        "Guía de Seguimiento": item.numero_guia || '',
+        "Estado Despacho": item.estado_despacho || '',
+        "Fecha Estimada Entrega": item.fecha_estimada_entrega || '',
+        "Fecha Real Entrega": item.fecha_entrega || '',
         "Estado Real": item.cantidad_facturada >= item.cantidad_pedida ? "🟢 COMPLETADO" : 
                        item.cantidad_facturada > 0 ? "🟡 EN PROCESO" : "⚪ PENDIENTE",
-        "Factura": order.numero_factura || '',
-        "Fecha Factura": order.fecha_factura || '',
+        "Factura": item.numero_factura || '',
+        "Fecha Factura": item.fecha_factura || '',
         "Envío": order.envio || item.envio || ''
       }))
     );
@@ -323,6 +425,19 @@ export default function Home() {
               >
                 Pedidos
               </button>
+
+              {user?.role === 'Administrador' && (
+                <button 
+                  onClick={() => { setActiveTab('config'); setSelectedOrder(null); }}
+                  className={`px-4 py-2 text-sm font-bold transition-all rounded-xl flex items-center gap-2 ${activeTab === 'config' ? 'text-white bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Configuración
+                </button>
+              )}
             </div>
           </div>
 
@@ -364,6 +479,7 @@ export default function Home() {
                   setUser(null);
                   storageService.clearState();
                 }}
+                onSearch={handleSearch}
                 totalOrders={filteredOrders.length}
                 counts={counts}
                 activeStatusFilter={activeStatusFilter}
@@ -371,14 +487,16 @@ export default function Home() {
                   setActiveStatusFilter(status);
                   handleSearch(filters, status);
                 }}
+                rawStatuses={rawStatuses}
                 filters={filters}
                 onFilterChange={setFilters}
-                onSearch={handleSearch}
                 onDownload={handleDownload}
               />
 
               <div className="relative min-h-[500px]">
-                {filteredOrders.length === 0 ? (
+                {activeTab === 'config' ? (
+                  <UserManagement onClose={() => setActiveTab('pedidos')} />
+                ) : filteredOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-32 text-center animate-in fade-in zoom-in-95 duration-500">
                     <div className="w-24 h-24 bg-slate-100 rounded-3xl flex items-center justify-center mb-6 border border-slate-200 shadow-inner">
                       <svg className="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
