@@ -21,8 +21,10 @@ export interface VisorRow {
     "Cantidad pedida": string | null;
     "cantidad facturada": string | null;
     "cant - ent - despacho": string | null;
-    "cant proc": string | null;
-    "cant planif": string | null;
+    "cant proc": bigint | number | string | null;
+    "cant planif": bigint | number | string | null;
+    "Precio por unidad": string | null;
+    "Valor total": string | null;
     "Componente": string | null;
     "situación item": string | null;
     "envio": string | null;
@@ -38,6 +40,7 @@ export interface VisorRow {
     "Estado despacho": string | null;
     "Estado de la orden": string | null;
     "Estado de la Orden"?: string | null;
+    "Estado"?: string | null;
     "# Remisión": string | null;
     "Transportador": string | null;
     "# GUIA": string | null;
@@ -68,6 +71,15 @@ export interface OrderItem {
     estado_orden?: string;
     numero_guia?: string;
     transportador?: string;
+    estado_raw?: string;
+    // Per-item fields from each DB row (NOT propagated from order)
+    remision?: string;
+    fecha_real_despacho?: string;
+    fecha_entrega?: string;
+    numero_factura?: string;
+    fecha_factura?: string;
+    estado_despacho?: string;
+    fecha_estimada_entrega?: string;
 }
 
 export interface Order {
@@ -98,6 +110,7 @@ export interface Order {
     fecha_factura?: string;
     envio?: string;
     estado_despacho?: string;
+    estado_raw?: string;
     bloqueado_despacho?: boolean;
     nueva_fecha?: string;
     normalizedStatus: string;
