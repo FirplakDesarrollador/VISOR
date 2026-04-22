@@ -479,6 +479,7 @@ export default function Home() {
                   setUser(null);
                   storageService.clearState();
                 }}
+                onSearch={handleSearch}
                 totalOrders={filteredOrders.length}
                 counts={counts}
                 activeStatusFilter={activeStatusFilter}
