@@ -7,17 +7,19 @@ export const getOrdersFromVisor = async (role: UserRole, vendedorFilter?: string
         .select('*')
         .neq('Código del cliente', 'CN890927404-01');
 
-    // Reglas de Negocio RBAC:
-    // 1. Backoffice: Ve todo (excepto el cliente bloqueado por defecto)
-    // 2. Asesor: Solo ve lo suyo (vendedor === email/id)
-    // 3. Externo: No ve nada preventivo (se maneja por búsqueda exacta en el front)
+    // Optimización de rendimiento: Por defecto solo traer los últimos 6 meses
+    // para evitar cargar miles de registros históricos innecesarios en el inicio.
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const dateLimit = sixMonthsAgo.toISOString().split('T')[0];
     
+    query = query.gte('Fecha de ingreso', dateLimit);
+
+    // Reglas de Negocio RBAC:
     if (role === 'Asesor') {
         if (vendedorFilter && vendedorFilter.trim() !== '') {
-            // Usamos comodines para máxima compatibilidad con espacios o nombres parciales en DB
             query = query.ilike('vendedor', `%${vendedorFilter.trim()}%`);
         } else {
-            // Seguridad: Si el asesor no tiene nombre/email en sesión, no ve nada para evitar fugas.
             query = query.eq('vendedor', 'SESSION_IDENTITY_MISSING');
         }
     }
@@ -25,13 +27,18 @@ export const getOrdersFromVisor = async (role: UserRole, vendedorFilter?: string
     const { data, error } = await query;
 
     if (error) {
-        console.error('Error fetching VISOR data:', error);
+        console.error('Error fetching VISOR data:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+        });
         throw error;
     }
 
     if (!data) return [];
 
-    return groupRowsIntoOrders(data as VisorRow[]);
+    return groupRowsIntoOrders(data as unknown as VisorRow[]);
 };
 
 const normalizeOrderState = (state: string | null | undefined): string => {
@@ -185,7 +192,8 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             estado_raw: cleanString(row["Estado"]),
             // Per-item row data — preserva integridad de cada fila de la BD
             remision: cleanString(row["# Remisión"]),
-            fecha_real_despacho: cleanString(row["Fecha real de despacho"]),
+            fecha_real_despacho: cleanString(row["Fecha real de despacho"] || (row as any)["Fecha real despacho"]),
+            fecha_plan_despacho: cleanString(row["Fecha de despacho"] || (row as any)["Fecha despacho"] || (row as any)["Fecha Prog Desp"]),
             fecha_entrega: cleanString(row["Fecha de entrega"]),
             numero_factura: formatLargeNumber(row["# Factura"]),
             fecha_factura: cleanString(row["Fecha de la factura"]),

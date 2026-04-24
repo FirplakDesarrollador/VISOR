@@ -19,7 +19,6 @@ export default function Home() {
   // --- CORE STATE ---
   const [user, setUser] = useState<User | null>(null);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos' | 'config'>('pedidos');
 
@@ -33,6 +32,7 @@ export default function Home() {
     ov: '', oc: '', clientName: '', nit: ''
   });
   const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>('EnProceso');
+  const [envioFilter, setEnvioFilter] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(false);
 
   const itemsPerPage = 12;
@@ -46,16 +46,15 @@ export default function Home() {
       if (saved.activeStatusFilter !== undefined) setActiveStatusFilter(saved.activeStatusFilter);
       if (saved.currentPage) setCurrentPage(saved.currentPage);
       if (saved.hasSearched !== undefined) setHasSearched(saved.hasSearched);
+      if (saved.envioFilter !== undefined) setEnvioFilter(saved.envioFilter);
     }
 
-    // 2. Initial Auth Check
-    const checkInitialAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const userEmail = session.user.email || '';
-          
-          // Buscar rol en la base de datos (Prioridad Máxima)
+    //Consolidated Auth Check
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const userEmail = session.user.email || '';
+        
+        try {
           const { data: dbUser } = await supabase
             .from('Usuarios')
             .select('Rol_Visor, nombres, apellidos')
@@ -64,28 +63,25 @@ export default function Home() {
 
           const dbRole = dbUser?.Rol_Visor;
           const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
-          
-          // Elevación de privilegios: Si el correo es de los autorizados o el rol contiene "back"
           const backofficeEmails = [
-            'mayerly.marin@firplak.com',
-            'ximena.ballestas@firplak.com',
-            'tatiana.duque@firplak.com',
-            'auxiliar.digitacion@firplak.com',
-            'luis.escobar@firplak.com',
-            'daniela.castro@firplak.com',
-            'juan.correa@firplak.com',
-            'marketplace@firplak.com',
-            'manuela.henao@firplak.com',
-            'ismael.correa@firplak.com',
-            'alejandro.isaza@firplak.com',
-            'servicios@firplak.com',
-            'servicios2@firplak.com',
-            'isabel.jaramillo@firplak.com',
-            'paula.guevara@firplak.com',
-            'analista2.desarrollo@firplak.com',
-          ];
+              'mayerly.marin@firplak.com',
+              'ximena.ballestas@firplak.com',
+              'tatiana.duque@firplak.com',
+              'auxiliar.digitacion@firplak.com',
+              'luis.escobar@firplak.com',
+              'daniela.castro@firplak.com',
+              'juan.correa@firplak.com',
+              'marketplace@firplak.com',
+              'manuela.henao@firplak.com',
+              'ismael.correa@firplak.com',
+              'alejandro.isaza@firplak.com',
+              'servicios@firplak.com',
+              'servicios2@firplak.com',
+              'isabel.jaramillo@firplak.com',
+              'paula.guevara@firplak.com',
+              'analista2.desarrollo@firplak.com',
+            ];
 
-          // Jerarquía: DB Role > Admin Metadata > Email List > Metadata
           let normalizedRole = 'Asesor';
           if (dbRole) {
             normalizedRole = dbRole;
@@ -94,7 +90,7 @@ export default function Home() {
           } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
             normalizedRole = 'Backoffice';
           }
-          
+
           const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
 
           setUser({
@@ -103,67 +99,13 @@ export default function Home() {
             name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
             role: normalizedRole
           });
+        } catch (error) {
+          console.error("Auth sync error:", error);
         }
-      } catch (error) {
-        console.error("Initial auth check failed", error);
-      } finally {
-        setIsSessionChecked(true); // Always proceed after check
-      }
-    };
-    checkInitialAuth();
-
-    // 3. Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const userEmail = session.user.email || '';
-        
-        const { data: dbUser } = await supabase
-          .from('Usuarios')
-          .select('Rol_Visor, nombres, apellidos')
-          .eq('correo', userEmail)
-          .single();
-
-        const dbRole = dbUser?.Rol_Visor;
-        const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
-        const backofficeEmails = [
-            'mayerly.marin@firplak.com',
-            'ximena.ballestas@firplak.com',
-            'tatiana.duque@firplak.com',
-            'auxiliar.digitacion@firplak.com',
-            'luis.escobar@firplak.com',
-            'daniela.castro@firplak.com',
-            'juan.correa@firplak.com',
-            'marketplace@firplak.com',
-            'manuela.henao@firplak.com',
-            'ismael.correa@firplak.com',
-            'alejandro.isaza@firplak.com',
-            'servicios@firplak.com',
-            'servicios2@firplak.com',
-            'isabel.jaramillo@firplak.com',
-            'paula.guevara@firplak.com',
-            'analista2.desarrollo@firplak.com',
-          ];
-
-        let normalizedRole = 'Asesor';
-        if (dbRole) {
-          normalizedRole = dbRole;
-        } else if (rawRole.toLowerCase().includes('admin')) {
-          normalizedRole = 'Administrador';
-        } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
-          normalizedRole = 'Backoffice';
-        }
-
-        const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
-
-        setUser({
-          id: session.user.id,
-          email: userEmail,
-          name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
-          role: normalizedRole
-        });
       } else {
         setUser(null);
       }
+      setIsSessionChecked(true); // Signal that initial check is done
     });
 
     return () => subscription.unsubscribe();
@@ -178,14 +120,14 @@ export default function Home() {
 
   // --- PERSISTENCE SAVE ---
   useEffect(() => {
-    storageService.saveState({ filters, activeStatusFilter, currentPage, hasSearched });
-  }, [filters, activeStatusFilter, currentPage, hasSearched]);
+    storageService.saveState({ filters, activeStatusFilter, currentPage, hasSearched, envioFilter });
+  }, [filters, activeStatusFilter, currentPage, hasSearched, envioFilter]);
 
-  // --- HELPERS ---
-  const normalize = (str: string) =>
-    (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  // --- HELPERS (Memoized) ---
+  const normalize = useCallback((str: string) =>
+    (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(), []);
 
-  const isItemInStatus = (item: any, order: Order, status: string) => {
+  const isItemInStatus = useCallback((item: any, order: Order, status: string) => {
     const itemState = normalize(item.estado_raw || order.estado_raw || '');
     const itemNormalized = normalize(item.estado_orden || order.estado_orden || '');
 
@@ -208,7 +150,7 @@ export default function Home() {
       default:
         return true;
     }
-  };
+  }, [normalize]);
 
   // 1. Searched Orders (Apply text filters only)
   const searchedOrders = useMemo(() => {
@@ -240,18 +182,46 @@ export default function Home() {
 
       return matchOV && matchOC && matchClient && matchNIT;
     });
-  }, [allOrders, filters, user]);
+  }, [allOrders, filters, user, normalize]);
 
-  // 2. Status Counts (Based on searched orders)
+  // 2. Status Counts (Optimized: single pass over searched orders)
   const counts = useMemo(() => {
-    return {
-      pending: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Pendiente'))).length,
-      production: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'En Producción'))).length,
-      transit: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Transito'))).length,
-      delivered: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'Entregada'))).length,
-      enProceso: searchedOrders.filter(o => o.items.some(i => isItemInStatus(i, o, 'EnProceso'))).length,
-    };
-  }, [searchedOrders]);
+    let base = searchedOrders;
+    
+    if (envioFilter) {
+      base = base.filter(order => {
+        const orderEnvio = normalize(order.envio || '');
+        const filterVal = normalize(envioFilter);
+        return orderEnvio === filterVal || order.items.some(item => normalize(item.envio || '') === filterVal);
+      });
+    }
+
+    const result = { pending: 0, production: 0, transit: 0, delivered: 0, enProceso: 0 };
+    
+    base.forEach(o => {
+      let hasPending = false;
+      let hasProduction = false;
+      let hasTransit = false;
+      let hasDelivered = false;
+      let hasEnProceso = false;
+
+      o.items.forEach(i => {
+        if (!hasPending && isItemInStatus(i, o, 'Pendiente')) hasPending = true;
+        if (!hasProduction && isItemInStatus(i, o, 'En Producción')) hasProduction = true;
+        if (!hasTransit && isItemInStatus(i, o, 'Transito')) hasTransit = true;
+        if (!hasDelivered && isItemInStatus(i, o, 'Entregada')) hasDelivered = true;
+        if (!hasEnProceso && isItemInStatus(i, o, 'EnProceso')) hasEnProceso = true;
+      });
+
+      if (hasPending) result.pending++;
+      if (hasProduction) result.production++;
+      if (hasTransit) result.transit++;
+      if (hasDelivered) result.delivered++;
+      if (hasEnProceso) result.enProceso++;
+    });
+
+    return result;
+  }, [searchedOrders, envioFilter, normalize, isItemInStatus]);
 
   // 3. Final Filtered Orders (Apply status filter)
   const finalOrders = useMemo(() => {
@@ -265,18 +235,29 @@ export default function Home() {
       }).filter(Boolean) as Order[];
     }
 
+    // Filter by Envio status if applicable
+    if (envioFilter) {
+      result = result.filter(order => {
+        const orderEnvio = normalize(order.envio || '');
+        const filterVal = normalize(envioFilter);
+        
+        // Match order level envio
+        const matchOrderEnvio = orderEnvio === filterVal;
+        
+        // Match item level envio (if any item matches the filter)
+        const hasMatchItemEnvio = order.items.some(item => normalize(item.envio || '') === filterVal);
+        
+        return matchOrderEnvio || hasMatchItemEnvio;
+      });
+    }
+
     // Sort by entry date (Descending)
     return [...result].sort((a, b) => {
       const dateA = a.fecha_ingreso || '';
       const dateB = b.fecha_ingreso || '';
       return dateB.localeCompare(dateA);
     });
-  }, [searchedOrders, activeStatusFilter, user]);
-
-  // Update filteredOrders whenever finalOrders changes
-  useEffect(() => {
-    setFilteredOrders(finalOrders);
-  }, [finalOrders]);
+  }, [searchedOrders, activeStatusFilter, envioFilter, user, normalize, isItemInStatus]);
 
   // --- DATA FETCHING ---
   // Only re-fetch when the user/role changes or session is first checked.
@@ -335,46 +316,41 @@ export default function Home() {
   };
 
   const handleDownload = () => {
-    if (filteredOrders.length === 0) return;
+    if (finalOrders.length === 0) return;
 
     // 1. Preparar la data plana (aplanar órdenes con sus ítems)
-    const exportData = filteredOrders.flatMap(order => 
-      order.items.map(item => ({
-        "Fecha Ingreso": order.fecha_ingreso,
-        "Orden Venta": order.numero_orden_venta,
-        "Orden Compra": order.numero_orden_compra || '',
-        "Tipo OV": order.tipo_orden_venta,
-        "Cliente": order.nombre_cliente,
-        "NIT": order.nit_cliente,
-        "Sala": order.nombre_sala || '',
-        "Vendedor": order.vendedor || '',
-        "Estado General": order.estado_orden,
-        "Ciudad Destino": order.ciudad_destino,
-        "Familia": item.familia || '',
-        "Código Producto": item.codigo_producto,
-        "Descripción Producto": item.descripcion_producto,
-        "Componente": item.componente || '',
-        "Situación": item.situacion_item || '',
-        "Cant. Pedida": item.cantidad_pedida,
-        "Cant. Facturada": item.cantidad_facturada,
-        "Cant. Despacho": item.cantidad_despacho,
-        "Cant. Producción": item.cantidad_produccion,
-        "Cant. Planificada": item.cantidad_planificada,
-        "Precio Unitario": item.precio_unitario ?? '',
-        "Valor Total": item.valor_total ?? '',
-        "Estado Prod.": item.estado_produccion || 'Pendiente',
-        "Fecha Despacho Plan": order.fecha_plan_despacho,
-        "Fecha Real Despacho": item.fecha_real_despacho || '',
-        "Transportadora": item.transportador || '',
-        "Guía de Seguimiento": item.numero_guia || '',
-        "Estado Despacho": item.estado_despacho || '',
-        "Fecha Estimada Entrega": item.fecha_estimada_entrega || '',
-        "Fecha Real Entrega": item.fecha_entrega || '',
-        "Estado Real": item.cantidad_facturada >= item.cantidad_pedida ? "🟢 COMPLETADO" : 
-                       item.cantidad_facturada > 0 ? "🟡 EN PROCESO" : "⚪ PENDIENTE",
-        "Factura": item.numero_factura || '',
-        "Fecha Factura": item.fecha_factura || '',
-        "Envío": order.envio || item.envio || ''
+    const exportData = finalOrders.flatMap(order => 
+      order.items.map((item, index) => ({
+        "OV": order.numero_orden_venta,
+        "OC": order.numero_orden_compra || '',
+        "CÓD. CLIENTE": order.nit_cliente,
+        "CLIENTE": order.nombre_cliente,
+        "SALA / PROYECTO": order.nombre_sala || '',
+        "ESTADO": order.estado_orden,
+        "VENDEDOR": order.vendedor || '',
+        "CIUDAD": order.ciudad_destino,
+        "IT": index + 1,
+        "CÓD. PRODUCTO": item.codigo_producto,
+        "PRODUCTO": item.descripcion_producto,
+        "FAMILIA": item.familia || '',
+        "PED": item.cantidad_pedida,
+        "FAC": item.cantidad_facturada,
+        "DESP": item.cantidad_despacho,
+        "PROD": item.cantidad_produccion,
+        "PLAN": item.cantidad_planificada,
+        "VALOR UNITARIO": item.precio_unitario ?? '',
+        "VALOR TOTAL": item.valor_total ?? '',
+        "TRANSPORTADOR": item.transportador || order.transportador || '',
+        "GUÍA": item.numero_guia || order.numero_guia || '',
+        "FECHA OV": order.fecha_ingreso,
+        "FECHA PROG DESP": item.fecha_plan_despacho || order.fecha_plan_despacho || '',
+        "FECHA REAL DESP": item.fecha_real_despacho || '',
+        "FECHA ESTIMADA": item.fecha_estimada_entrega || '',
+        "FECHA ENTREGA": item.fecha_entrega || '',
+        "FACTURA": item.numero_factura || '',
+        "FECHA FACTURA": item.fecha_factura || '',
+        "SITUACIÓN": item.situacion_item || '',
+        "ENVÍO": order.envio || item.envio || ''
       }))
     );
 
@@ -394,7 +370,7 @@ export default function Home() {
     worksheet['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
 
     // 5. Generar y descargar el archivo
-    XLSX.writeFile(workbook, `Reporte_Pedidos_Firplak_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `Reporte_Pedidos_Firplak_${new Date().toISOString().split('T')[0]}.xlsx`, { bookType: 'xlsx' });
   };
 
   return (
@@ -480,7 +456,7 @@ export default function Home() {
                   storageService.clearState();
                 }}
                 onSearch={handleSearch}
-                totalOrders={filteredOrders.length}
+                totalOrders={finalOrders.length}
                 counts={counts}
                 activeStatusFilter={activeStatusFilter}
                 onStatusFilterChange={(status) => {
@@ -491,12 +467,14 @@ export default function Home() {
                 filters={filters}
                 onFilterChange={setFilters}
                 onDownload={handleDownload}
+                envioFilter={envioFilter}
+                onEnvioFilterChange={setEnvioFilter}
               />
 
               <div className="relative min-h-[500px]">
                 {activeTab === 'config' ? (
                   <UserManagement onClose={() => setActiveTab('pedidos')} />
-                ) : filteredOrders.length === 0 ? (
+                ) : finalOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-32 text-center animate-in fade-in zoom-in-95 duration-500">
                     <div className="w-24 h-24 bg-slate-100 rounded-3xl flex items-center justify-center mb-6 border border-slate-200 shadow-inner">
                       <svg className="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -526,13 +504,13 @@ export default function Home() {
                   </div>
                 ) : user ? (
                   <TableView 
-                    orders={filteredOrders} 
+                    orders={finalOrders} 
                     onOrderClick={setSelectedOrder} 
                   />
                 ) : (
                   <>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-1">
-                      {filteredOrders
+                      {finalOrders
                         .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                         .map((order) => (
                           <OrderCard
@@ -546,7 +524,7 @@ export default function Home() {
                     <div className="mt-12 flex justify-center">
                       <Pagination
                         currentPage={currentPage}
-                        totalItems={filteredOrders.length}
+                        totalItems={finalOrders.length}
                         itemsPerPage={itemsPerPage}
                         onPageChange={setCurrentPage}
                       />

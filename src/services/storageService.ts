@@ -7,6 +7,7 @@ export interface VisorState {
     activeStatusFilter: string | null;
     currentPage: number;
     hasSearched: boolean;
+    envioFilter?: string | null;
 }
 
 export const storageService = {
