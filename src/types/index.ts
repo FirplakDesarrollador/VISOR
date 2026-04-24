@@ -75,6 +75,7 @@ export interface OrderItem {
     // Per-item fields from each DB row (NOT propagated from order)
     remision?: string;
     fecha_real_despacho?: string;
+    fecha_plan_despacho?: string;
     fecha_entrega?: string;
     numero_factura?: string;
     fecha_factura?: string;

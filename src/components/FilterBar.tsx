@@ -28,6 +28,8 @@ interface FilterBarProps {
     rawStatuses?: string[];
     filters: SearchFilters;
     onFilterChange: (filters: SearchFilters) => void;
+    envioFilter: string | null;
+    onEnvioFilterChange: (value: string | null) => void;
 }
 
 // Botones de estado unificados:
@@ -51,7 +53,9 @@ export default function FilterBar({
     onStatusFilterChange,
     rawStatuses = [],
     filters,
-    onFilterChange
+    onFilterChange,
+    envioFilter,
+    onEnvioFilterChange
 }: FilterBarProps) {
     const handleChange = (field: keyof SearchFilters, value: string) => {
         onFilterChange({ ...filters, [field]: value });
@@ -134,6 +138,21 @@ export default function FilterBar({
                                         ))}
                                     </optgroup>
                                 )}
+                            </select>
+
+                            {/* Dropdown Envío */}
+                            <select
+                                value={envioFilter ?? ''}
+                                onChange={(e) => {
+                                    const val = e.target.value || null;
+                                    onEnvioFilterChange(val);
+                                    onSearch(filters, activeStatusFilter);
+                                }}
+                                className="px-2.5 py-1.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none transition-all text-[10px] font-black text-primary cursor-pointer min-w-[120px]"
+                            >
+                                <option value="">Todos (Envío)</option>
+                                <option value="Completo">📦 Completo</option>
+                                <option value="Incompleto">⚠️ Incompleto</option>
                             </select>
 
                             {/* Descargar */}
