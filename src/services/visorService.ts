@@ -17,7 +17,9 @@ export const getOrdersFromVisor = async (role: UserRole, vendedorFilter?: string
 
     // Reglas de Negocio RBAC:
     if (role === 'Asesor') {
-        if (vendedorFilter && vendedorFilter.trim() !== '') {
+        if (Array.isArray(vendedorFilter) && vendedorFilter.length > 0) {
+            query = query.in('vendedor', vendedorFilter);
+        } else if (typeof vendedorFilter === 'string' && vendedorFilter.trim() !== '') {
             query = query.ilike('vendedor', `%${vendedorFilter.trim()}%`);
         } else {
             query = query.eq('vendedor', 'SESSION_IDENTITY_MISSING');
