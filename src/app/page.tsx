@@ -57,14 +57,23 @@ export default function Home() {
         try {
           const { data: dbUser } = await supabase
             .from('Usuarios')
-            .select('Rol_Visor, nombres, apellidos')
+            .select('Rol_Visor, nombres, apellidos, Vendedor_asignado')
             .eq('correo', userEmail)
             .single();
 
-          const dbRole = dbUser?.Rol_Visor;
-          const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
+          const dbRole = dbUser?.Rol_Visor || '';
+          const rawVendedores = dbUser?.Vendedor_asignado || '';
+          const assignedVendors = rawVendedores.split(',')
+            .map((v: string) => v.trim())
+            .filter((v: string) => v !== '');
+
+          const adminEmails = [
+            'mayerly.marin@firplak.com',
+            'ismael.correa@firplak.com',
+            'alejandro.isaza@firplak.com',
+          ];
+
           const backofficeEmails = [
-              'mayerly.marin@firplak.com',
               'ximena.ballestas@firplak.com',
               'tatiana.duque@firplak.com',
               'auxiliar.digitacion@firplak.com',
@@ -73,8 +82,6 @@ export default function Home() {
               'juan.correa@firplak.com',
               'marketplace@firplak.com',
               'manuela.henao@firplak.com',
-              'ismael.correa@firplak.com',
-              'alejandro.isaza@firplak.com',
               'servicios@firplak.com',
               'servicios2@firplak.com',
               'isabel.jaramillo@firplak.com',
@@ -82,10 +89,12 @@ export default function Home() {
               'analista2.desarrollo@firplak.com',
             ];
 
+          const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
           let normalizedRole = 'Asesor';
+          
           if (dbRole) {
             normalizedRole = dbRole;
-          } else if (rawRole.toLowerCase().includes('admin')) {
+          } else if (adminEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('admin')) {
             normalizedRole = 'Administrador';
           } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
             normalizedRole = 'Backoffice';
@@ -97,7 +106,8 @@ export default function Home() {
             id: session.user.id,
             email: userEmail,
             name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
-            role: normalizedRole
+            role: normalizedRole,
+            assignedVendor: assignedVendors
           });
         } catch (error) {
           console.error("Auth sync error:", error);
@@ -113,7 +123,8 @@ export default function Home() {
 
   // --- TAB REDIRECT: Ensure dashboard access only for users ---
   useEffect(() => {
-    if (!user && activeTab === 'dashboard') {
+    // Redirigir a Pedidos si no hay sesión o si es Vendedor (no tiene acceso a Dashboard)
+    if ((!user || user.role === 'Vendedor') && activeTab === 'dashboard') {
       setActiveTab('pedidos');
     }
   }, [user, activeTab]);
@@ -273,19 +284,9 @@ export default function Home() {
       
       try {
         const role = user ? user.role : 'Externo';
+        const vendedorFilter = role === 'Vendedor' ? user?.assignedVendor : undefined;
 
-        // Mapa explícito de correo → nombre exacto en columna Vendedor de la BD
-        // Usar cuando el nombre derivado del email no coincide con el nombre en la BD
-        const emailToVendedorName: Record<string, string> = {
-          'yaneth.rojas@firplak.com': 'Yaneth Rojas',
-        };
-
-        // Prioridad: mapa explícito > nombre de sesión > nombre derivado del email
-        const nameFromEmail = user?.email ? user.email.split('@')[0].replace(/[._]/g, ' ') : undefined;
-        const mappedName = user?.email ? emailToVendedorName[user.email.toLowerCase()] : undefined;
-        const vendedorFilter = role === 'Asesor' ? (mappedName || user?.name || nameFromEmail) : undefined;
-
-        const data = await getOrdersFromVisor(role, vendedorFilter);
+        const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter);
         setAllOrders(data);
       } catch (error) {
         console.error("Fetch orders failed", error);
@@ -387,7 +388,8 @@ export default function Home() {
             </div>
             
             <div className="hidden lg:flex items-center gap-1 pl-6 border-l border-white/10">
-              {user && (
+              {/* Dashboard: Solo Admin */}
+              {user && user.role === 'Administrador' && (
                 <button 
                   onClick={() => { setActiveTab('dashboard'); setSelectedOrder(null); }}
                   className={`px-4 py-2 text-sm font-bold transition-all rounded-xl ${activeTab === 'dashboard' ? 'text-white bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
@@ -395,6 +397,7 @@ export default function Home() {
                   Dashboard
                 </button>
               )}
+              
               <button 
                 onClick={() => { setActiveTab('pedidos'); setSelectedOrder(null); }}
                 className={`px-4 py-2 text-sm font-bold transition-all rounded-xl ${activeTab === 'pedidos' ? 'text-white bg-white/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
@@ -428,13 +431,24 @@ export default function Home() {
       </nav>
 
       <main className="w-full max-w-[1920px] mx-auto px-2 sm:px-4 lg:px-6 py-8">
-        <div className="transition-all duration-700 ease-in-out">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
           {loading ? (
-            <div className="space-y-8 animate-pulse">
-              <div className="h-64 bg-slate-200 rounded-[2rem]"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="h-32 bg-slate-200 rounded-2xl"></div>
-                <div className="h-32 bg-slate-200 rounded-2xl"></div>
+            <div className="space-y-8">
+              {/* Header Skeleton */}
+              <div className="skeleton h-64 w-full shadow-lg shadow-slate-200/50"></div>
+              
+              {/* Cards Skeleton Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="skeleton h-32 w-full rounded-2xl shadow-sm"></div>
+                ))}
+              </div>
+
+              {/* List Skeleton */}
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="skeleton h-20 w-full rounded-xl"></div>
+                ))}
               </div>
             </div>
           ) : selectedOrder ? (

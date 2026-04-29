@@ -25,6 +25,7 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             <td className="sticky left-[90px] z-10 px-2 py-1.5 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
             <td className="sticky left-[170px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
             <td className="sticky left-[290px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate italic">{row.envio}</td>
             <td className={`px-2 py-1.5 text-[9px] font-black uppercase tracking-wider border-r border-slate-200/50 ${
                 row.estado.toLowerCase().includes('entregada') ? 'text-green-700' :
                 row.estado.toLowerCase().includes('transito') || row.estado.toLowerCase().includes('tránsito') ? 'text-amber-600' :
@@ -149,6 +150,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                 transportador: cleanStr(item.transportador),
                 factura: cleanStr(item.numero_factura),
                 fechaFactura: cleanStr(item.fecha_factura),
+                envio: cleanStr(item.envio || order.envio),
                 ciudad: order.ciudad_destino,
                 colorRow: (item.estado_raw || order.estado_orden).toLowerCase().includes('entregada') ? 'bg-[#E2EFDA] hover:bg-[#D5EAD8]' : 
                           (item.estado_raw || order.estado_orden).toLowerCase().includes('transito') ? 'bg-[#FFF2CC] hover:bg-[#FFE699]' :
@@ -220,6 +222,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
         { key: 'oc', label: 'OC', width: '80px', sticky: 'left-[90px]', z: 'z-[30]' },
         { key: 'nit', label: 'Cód. Cliente', width: '120px', sticky: 'left-[170px]', z: 'z-[30]' },
         { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[290px]', z: 'z-[30]' },
+        { key: 'envio', label: 'Envío', width: '100px' },
         { key: 'estado', label: 'Estado', width: '120px' },
         { key: 'vendedor', label: 'Vendedor', width: '110px' },
         { key: 'itemIdx', label: 'IT', width: '40px', preventTranslation: true },
@@ -335,6 +338,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/60">TOTAL VALOR</span>
                             </td>
                             {/* Columnas 5-13 vacías */}
+                            <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />
