@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { Order, OrderItem, VisorRow, UserRole } from '@/types';
 
-export const getOrdersFromVisor = async (role: UserRole, vendedorFilter?: string): Promise<Order[]> => {
+export const getOrdersFromVisor = async (role: UserRole, vendedorFilter?: string | string[]): Promise<Order[]> => {
     // In a real scenario, we might filter by role or vendor here
     let query = supabase.from('VISOR')
         .select('*')
