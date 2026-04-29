@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Order } from '@/types';
 
 interface OrderCardProps {
@@ -44,7 +45,7 @@ const getStatusStyles = (status: string) => {
     };
 };
 
-export default function OrderCard({ order, onClick }: OrderCardProps) {
+const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardProps) {
     const styles = getStatusStyles(order.estado_orden);
 
     const formatValue = (val: any) => (val === null || val === undefined || String(val).toUpperCase() === 'NULL' || String(val).trim() === '') ? 'N/A' : val;
@@ -123,4 +124,6 @@ export default function OrderCard({ order, onClick }: OrderCardProps) {
             </div>
         </div>
     );
-}
+});
+
+export default OrderCard;
