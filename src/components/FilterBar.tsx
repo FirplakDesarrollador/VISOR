@@ -30,6 +30,8 @@ interface FilterBarProps {
     onFilterChange: (filters: SearchFilters) => void;
     envioFilter: string | null;
     onEnvioFilterChange: (value: string | null) => void;
+    viewMode?: 'operativa' | 'ejecutiva';
+    onViewModeChange?: (mode: 'operativa' | 'ejecutiva') => void;
 }
 
 // Botones de estado unificados:
@@ -55,7 +57,9 @@ export default function FilterBar({
     filters,
     onFilterChange,
     envioFilter,
-    onEnvioFilterChange
+    onEnvioFilterChange,
+    viewMode,
+    onViewModeChange
 }: FilterBarProps) {
     const handleChange = (field: keyof SearchFilters, value: string) => {
         onFilterChange({ ...filters, [field]: value });
@@ -117,6 +121,32 @@ export default function FilterBar({
                 <div className="flex items-center gap-2">
                     {user && (
                         <>
+                            {/* View Switcher Toggle */}
+                            {onViewModeChange && (
+                                <div className="flex items-center bg-slate-100/80 p-0.5 rounded-lg border border-slate-200 shadow-inner mr-2">
+                                    <button
+                                        onClick={() => onViewModeChange('operativa')}
+                                        className={`px-3 py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${
+                                            viewMode === 'operativa' 
+                                            ? 'bg-white text-primary shadow-sm ring-1 ring-slate-200/50' 
+                                            : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        Operativa
+                                    </button>
+                                    <button
+                                        onClick={() => onViewModeChange('ejecutiva')}
+                                        className={`px-3 py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${
+                                            viewMode === 'ejecutiva' 
+                                            ? 'bg-white text-primary shadow-sm ring-1 ring-slate-200/50' 
+                                            : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        Ejecutiva
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Dropdown Estado */}
                             <select
                                 value={activeStatusFilter ?? ''}

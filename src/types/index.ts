@@ -117,3 +117,30 @@ export interface Order {
     nueva_fecha?: string;
     normalizedStatus: string;
 }
+
+export interface ExecutiveOrder {
+    ov: string;
+    oc?: string;
+    cod_cliente?: string;
+    cliente?: string;
+    tipo_envio?: string;
+    vendedor?: string;
+    fecha_compromiso?: string;
+    fecha_ingreso?: string;
+    total_unidades_pedidas: number;
+    total_en_cedi: number;
+    total_en_produccion: number;
+    total_planificado: number;
+    valor_total_pedido: number;
+    fecha_ingreso_date?: string;
+    fecha_compromiso_date?: string;
+    
+    // Frontend calculated fields
+    pct_cedi: number;
+    pct_produccion: number;
+    pct_planificado: number;
+    pct_avance: number;
+    dias_atraso: number;
+    prioridad: 'Alta' | 'Media' | 'Baja';
+    estado_general: string;
+}
