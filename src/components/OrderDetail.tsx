@@ -147,7 +147,7 @@ export default function OrderDetail({ order, role, onBack }: OrderDetailProps) {
                         <div className="grid grid-cols-4 gap-1.5">
                             {[
                                 { label: 'Fac', count: Math.max(0, order.total_facturada), color: 'bg-emerald-500' },
-                                { label: 'Des', count: Math.max(0, order.total_despacho), color: 'bg-blue-500' },
+                                { label: 'CEDI', count: Math.max(0, order.total_despacho), color: 'bg-blue-500' },
                                 { label: 'Pro', count: Math.max(0, order.total_produccion), color: 'bg-orange-500' },
                                 { label: 'Pen', count: Math.max(0, order.total_planificada), color: 'bg-slate-500' }
                             ].map(stat => (
@@ -200,7 +200,7 @@ export default function OrderDetail({ order, role, onBack }: OrderDetailProps) {
                                     <th className="min-w-[280px] px-3 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Descripción</th>
                                     <th className="w-16 px-2 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Ped</th>
                                     <th className="w-16 px-2 py-3 text-[9px] font-black text-emerald-600 uppercase tracking-widest text-center bg-emerald-50/30">Fac</th>
-                                    <th className="w-16 px-2 py-3 text-[9px] font-black text-blue-600 uppercase tracking-widest text-center bg-blue-50/30">Desp</th>
+                                    <th className="w-16 px-2 py-3 text-[9px] font-black text-blue-600 uppercase tracking-widest text-center bg-blue-50/30">CEDI</th>
                                     <th className="w-16 px-2 py-3 text-[9px] font-black text-orange-600 uppercase tracking-widest text-center bg-orange-50/30">Prod</th>
                                     <th className="w-16 px-2 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center bg-slate-100/30">Plan</th>
                                     {isInternal && <th className="w-24 px-4 py-3 text-[9px] font-black text-violet-600 uppercase tracking-widest text-right">Valor T.</th>}
@@ -256,7 +256,7 @@ export default function OrderDetail({ order, role, onBack }: OrderDetailProps) {
                                             <td className="px-3 py-4 text-center">
                                                 <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border ${
                                                     item.estado_produccion === 'Completo' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                    item.estado_produccion === 'En Producción' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                    (item.estado_produccion === 'En Producción' || item.estado_produccion === 'En Proceso') ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                                     'bg-slate-50 text-slate-500 border-slate-100'
                                                 }`}>
                                                     {item.estado_produccion || itemStatus}

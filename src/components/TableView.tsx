@@ -25,11 +25,28 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             <td className="sticky left-[90px] z-10 px-2 py-1.5 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
             <td className="sticky left-[170px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
             <td className="sticky left-[290px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
-            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate italic">{row.envio}</td>
+            <td className="px-2 py-1.5 border-r border-slate-200/50 text-center truncate">
+                {row.envio ? (
+                    <span 
+                        title={row.componente ? `Componente: ${row.componente}` : undefined}
+                        className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-sm ${
+                            row.componente?.toLowerCase().includes('kit') 
+                            ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                            : row.envio.toLowerCase().includes('completo')
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : row.envio.toLowerCase().includes('incompleto')
+                            ? 'bg-rose-100 text-rose-800 border-rose-300'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 shadow-none font-bold italic normal-case tracking-normal'
+                        }`}
+                    >
+                        {row.envio}
+                    </span>
+                ) : ''}
+            </td>
             <td className={`px-2 py-1.5 text-[9px] font-black uppercase tracking-wider border-r border-slate-200/50 ${
                 row.estado.toLowerCase().includes('entregada') ? 'text-green-700' :
                 row.estado.toLowerCase().includes('transito') || row.estado.toLowerCase().includes('tránsito') ? 'text-amber-600' :
-                row.estado.toLowerCase().includes('produccion') || row.estado.toLowerCase().includes('producción') ? 'text-orange-600' :
+                row.estado.toLowerCase().includes('produccion') || row.estado.toLowerCase().includes('producción') || row.estado.toLowerCase().includes('proceso') ? 'text-orange-600' :
                 'text-slate-600'
             }`}>
                 {row.estado}
@@ -49,6 +66,7 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             <td className="px-1 py-1.5 text-[11px] font-black text-center text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{row.cantPlanificada}</td>
             <td className="px-2 py-1.5 text-[10px] font-black text-right text-violet-700 border-r border-slate-200/50 bg-violet-50/20 whitespace-nowrap">{row.precioUnitario != null ? `$ ${row.precioUnitario.toLocaleString('en-US')}` : ''}</td>
             <td className="px-2 py-1.5 text-[10px] font-black text-right text-violet-800 border-r border-slate-200/50 bg-violet-50/30 whitespace-nowrap">{row.valorTotal != null ? `$ ${row.valorTotal.toLocaleString('en-US')}` : ''}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.estadoDespacho}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.transportador}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-700 border-r border-slate-200/50 font-mono tracking-wide truncate">{row.guia}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{row.fechaIngreso}</td>
@@ -148,13 +166,15 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                 isRealEntrega: !!item.fecha_entrega && cleanStr(item.fecha_entrega) !== '',
                 guia: cleanStr(item.numero_guia),
                 transportador: cleanStr(item.transportador),
+                estadoDespacho: cleanStr(item.estado_despacho || order.estado_despacho),
                 factura: cleanStr(item.numero_factura),
                 fechaFactura: cleanStr(item.fecha_factura),
                 envio: cleanStr(item.envio || order.envio),
+                componente: cleanStr(item.componente),
                 ciudad: order.ciudad_destino,
-                colorRow: (item.estado_raw || order.estado_orden).toLowerCase().includes('entregada') ? 'bg-[#E2EFDA] hover:bg-[#D5EAD8]' : 
-                          (item.estado_raw || order.estado_orden).toLowerCase().includes('transito') ? 'bg-[#FFF2CC] hover:bg-[#FFE699]' :
-                          (item.estado_raw || order.estado_orden).toLowerCase().includes('produccion') ? 'bg-[#FCE4D6] hover:bg-[#F8CBAD]' : 'bg-white hover:bg-slate-50'
+                colorRow: (item.estado_orden || order.estado_orden).toLowerCase().includes('entregada') ? 'bg-[#E2EFDA] hover:bg-[#D5EAD8]' : 
+                          (item.estado_orden || order.estado_orden).toLowerCase().includes('transito') ? 'bg-[#FFF2CC] hover:bg-[#FFE699]' :
+                          (item.estado_orden || order.estado_orden).toLowerCase().includes('produccion') || (item.estado_orden || order.estado_orden).toLowerCase().includes('proceso') ? 'bg-[#FCE4D6] hover:bg-[#F8CBAD]' : 'bg-white hover:bg-slate-50'
             }))
         );
     }, [orders]);
@@ -234,6 +254,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
         { key: 'cantPlanificada', label: 'Pla', width: '50px' },
         { key: 'precioUnitario', label: 'Precio U.', width: '100px' },
         { key: 'valorTotal', label: 'Valor Total', width: '110px' },
+        { key: 'estadoDespacho', label: 'Estado despacho', width: '130px' },
         { key: 'transportador', label: 'Transportadora', width: '140px' },
         { key: 'guia', label: '# Guía', width: '110px' },
         { key: 'fechaIngreso', label: 'Fecha OV', width: '95px' },
@@ -357,6 +378,8 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                                     <span className="text-xs font-black text-emerald-400 tracking-tight">$ {sumaValorTotal.toLocaleString('en-US')}</span>
                                 </div>
                             </td>
+                            {/* Estado despacho — vacía */}
+                            <td className="px-2 py-2 border-r border-white/10" />
                             {/* Columnas restantes vacías */}
                             <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />

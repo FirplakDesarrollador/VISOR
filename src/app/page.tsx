@@ -10,17 +10,20 @@ import FilterBar, { SearchFilters } from '@/components/FilterBar';
 import LoginModal from '@/components/LoginModal';
 import Pagination from '@/components/Pagination';
 import UserManagement from '@/components/UserManagement';
+import ExecutiveView from '@/components/ExecutiveView';
 import { supabase } from '@/services/supabase';
-import { getOrdersFromVisor } from '@/services/visorService';
 import { storageService } from '@/services/storageService';
-import { Order, User, UserRole } from '@/types';
+import { getOrdersFromVisor, mapOrdersToExecutive } from '@/services/visorService';
+import { Order, User, UserRole, ExecutiveOrder } from '@/types';
 
 export default function Home() {
   // --- CORE STATE ---
   const [user, setUser] = useState<User | null>(null);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [executiveOrders, setExecutiveOrders] = useState<ExecutiveOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'pedidos' | 'config'>('pedidos');
+  const [viewMode, setViewMode] = useState<'operativa' | 'ejecutiva'>('operativa');
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loading, setLoading] = useState(true); // Start as loading to avoid flash
@@ -47,6 +50,7 @@ export default function Home() {
       if (saved.currentPage) setCurrentPage(saved.currentPage);
       if (saved.hasSearched !== undefined) setHasSearched(saved.hasSearched);
       if (saved.envioFilter !== undefined) setEnvioFilter(saved.envioFilter);
+      if ((saved as any).viewMode !== undefined) setViewMode((saved as any).viewMode);
     }
 
     //Consolidated Auth Check
@@ -58,8 +62,8 @@ export default function Home() {
           const { data: dbUser } = await supabase
             .from('Usuarios')
             .select('Rol_Visor, nombres, apellidos, Vendedor_asignado')
-            .eq('correo', userEmail)
-            .single();
+            .ilike('correo', userEmail.trim())
+            .maybeSingle();
 
           const dbRole = dbUser?.Rol_Visor || '';
           const rawVendedores = dbUser?.Vendedor_asignado || '';
@@ -102,10 +106,15 @@ export default function Home() {
 
           const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
 
+          const emailName = userEmail.split('@')[0]
+            .split('.')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+
           setUser({
             id: session.user.id,
             email: userEmail,
-            name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+            name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || emailName,
             role: normalizedRole,
             assignedVendor: assignedVendors
           });
@@ -131,8 +140,8 @@ export default function Home() {
 
   // --- PERSISTENCE SAVE ---
   useEffect(() => {
-    storageService.saveState({ filters, activeStatusFilter, currentPage, hasSearched, envioFilter });
-  }, [filters, activeStatusFilter, currentPage, hasSearched, envioFilter]);
+    storageService.saveState({ filters, activeStatusFilter, currentPage, hasSearched, envioFilter, viewMode } as any);
+  }, [filters, activeStatusFilter, currentPage, hasSearched, envioFilter, viewMode]);
 
   // --- HELPERS (Memoized) ---
   const normalize = useCallback((str: string) =>
@@ -270,6 +279,27 @@ export default function Home() {
     });
   }, [searchedOrders, activeStatusFilter, envioFilter, user, normalize, isItemInStatus]);
 
+  // 4. Executive Orders Filtering (Apply text filters only, executive table has its own column filters)
+  const finalExecutiveOrders = useMemo(() => {
+    return executiveOrders.filter(order => {
+      const ov = normalize(order.ov);
+      const searchOV = normalize(filters.ov);
+      const oc = normalize(order.oc || '');
+      const searchOC = normalize(filters.oc);
+      const client = normalize(order.cliente || '');
+      const searchClient = normalize(filters.clientName);
+      const nit = (order.cod_cliente || '').trim();
+      const searchNIT = (filters.nit || '').trim();
+
+      const matchOV = !searchOV || ov.includes(searchOV);
+      const matchOC = !searchOC || oc.includes(searchOC);
+      const matchClient = !searchClient || client.includes(searchClient);
+      const matchNIT = !searchNIT || nit.includes(searchNIT);
+
+      return matchOV && matchOC && matchClient && matchNIT;
+    });
+  }, [executiveOrders, filters, normalize]);
+
   // --- DATA FETCHING ---
   // Only re-fetch when the user/role changes or session is first checked.
   useEffect(() => {
@@ -287,7 +317,10 @@ export default function Home() {
         const vendedorFilter = role === 'Vendedor' ? user?.assignedVendor : undefined;
 
         const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter);
+        const execData = user ? mapOrdersToExecutive(data) : [];
+        
         setAllOrders(data);
+        setExecutiveOrders(execData);
       } catch (error) {
         console.error("Fetch orders failed", error);
       } finally {
@@ -341,6 +374,7 @@ export default function Home() {
         "PLAN": item.cantidad_planificada,
         "VALOR UNITARIO": item.precio_unitario ?? '',
         "VALOR TOTAL": item.valor_total ?? '',
+        "ESTADO DESPACHO": item.estado_despacho || order.estado_despacho || '',
         "TRANSPORTADOR": item.transportador || order.transportador || '',
         "GUÍA": item.numero_guia || order.numero_guia || '',
         "FECHA OV": order.fecha_ingreso,
@@ -454,7 +488,7 @@ export default function Home() {
           ) : selectedOrder ? (
             <OrderDetail
               order={selectedOrder}
-              role={user?.role === 'Asesor' ? 'Asesor' : 'Backoffice'}
+              role={user?.role || 'Externo'}
               onBack={() => setSelectedOrder(null)}
             />
           ) : activeTab === 'dashboard' ? (
@@ -462,7 +496,7 @@ export default function Home() {
           ) : (
             <>
               <FilterBar
-                user={user ? { ...user, role: user.role === 'Asesor' ? 'Asesor' : 'Backoffice' } : null}
+                user={user}
                 onLoginClick={() => setIsLoginOpen(true)}
                 onLogoutClick={async () => {
                   await supabase.auth.signOut();
@@ -483,6 +517,8 @@ export default function Home() {
                 onDownload={handleDownload}
                 envioFilter={envioFilter}
                 onEnvioFilterChange={setEnvioFilter}
+                viewMode={user ? viewMode : undefined}
+                onViewModeChange={user ? setViewMode : undefined}
               />
 
               <div className="relative min-h-[500px]">
@@ -517,10 +553,22 @@ export default function Home() {
                     )}
                   </div>
                 ) : user ? (
-                  <TableView 
-                    orders={finalOrders} 
-                    onOrderClick={setSelectedOrder} 
-                  />
+                  viewMode === 'ejecutiva' ? (
+                    <ExecutiveView 
+                      orders={finalExecutiveOrders} 
+                      onOrderClick={(ov) => {
+                        const matchedOrder = allOrders.find(o => o.numero_orden_venta === ov);
+                        if (matchedOrder) {
+                          setSelectedOrder(matchedOrder);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <TableView 
+                      orders={finalOrders} 
+                      onOrderClick={setSelectedOrder} 
+                    />
+                  )
                 ) : (
                   <>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-1">
