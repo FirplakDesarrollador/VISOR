@@ -5,6 +5,7 @@ import { ExecutiveOrder } from '@/types';
 
 interface ExecutiveViewProps {
     orders: ExecutiveOrder[];
+    onOrderClick: (ov: string) => void;
 }
 
 type SortConfig = {
@@ -12,19 +13,37 @@ type SortConfig = {
     direction: 'asc' | 'desc' | null;
 };
 
-const ExecutiveTableRow = memo(({ row }: { row: ExecutiveOrder }) => {
+const ExecutiveTableRow = memo(({ row, onClick }: { row: ExecutiveOrder; onClick: (ov: string) => void }) => {
     return (
-        <tr className="transition-all hover:bg-slate-50 border-b border-slate-100">
-            <td className="sticky left-0 z-10 px-2 py-2 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.ov}</td>
+        <tr 
+            onClick={() => onClick(row.ov)}
+            className="transition-all hover:bg-slate-50 border-b border-slate-100 cursor-pointer group"
+        >
+            <td className="sticky left-0 z-10 px-2 py-2 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] group-hover:underline">{row.ov}</td>
             <td className="sticky left-[90px] z-10 px-2 py-2 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
             <td className="sticky left-[170px] z-10 px-2 py-2 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.cod_cliente}</td>
             <td className="sticky left-[290px] z-10 px-2 py-2 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-white shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
-            <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate italic">{row.tipo_envio}</td>
+            <td className="px-2 py-2 border-r border-slate-200/50 text-center truncate">
+                {row.tipo_envio ? (
+                    <span 
+                        className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-sm ${
+                            row.tipo_envio.toLowerCase().includes('completo')
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : row.tipo_envio.toLowerCase().includes('incompleto')
+                            ? 'bg-rose-100 text-rose-800 border-rose-300'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 shadow-none font-bold italic normal-case tracking-normal'
+                        }`}
+                    >
+                        {row.tipo_envio}
+                    </span>
+                ) : ''}
+            </td>
             <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.vendedor}</td>
             <td className="px-2 py-2 text-[11px] font-black text-center text-emerald-600 border-r border-slate-200/50 bg-emerald-50/20">{row.pct_cedi.toFixed(1)}%</td>
             <td className="px-2 py-2 text-[11px] font-black text-center text-amber-600 border-r border-slate-200/50 bg-amber-50/20">{row.pct_produccion.toFixed(1)}%</td>
             <td className="px-2 py-2 text-[11px] font-black text-center text-blue-600 border-r border-slate-200/50 bg-blue-50/20">{row.pct_planificado.toFixed(1)}%</td>
             <td className="px-2 py-2 text-[10px] font-black text-right text-violet-800 border-r border-slate-200/50 bg-violet-50/30 whitespace-nowrap">{row.valor_total_pedido != null ? `$ ${row.valor_total_pedido.toLocaleString('en-US')}` : ''}</td>
+            <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.estado_despacho}</td>
             <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap bg-slate-50/30">{row.fecha_compromiso}</td>
         </tr>
     );
@@ -32,7 +51,7 @@ const ExecutiveTableRow = memo(({ row }: { row: ExecutiveOrder }) => {
 
 ExecutiveTableRow.displayName = 'ExecutiveTableRow';
 
-export default function ExecutiveView({ orders }: ExecutiveViewProps) {
+export default function ExecutiveView({ orders, onOrderClick }: ExecutiveViewProps) {
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'fecha_compromiso_date', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
     const [displayLimit, setDisplayLimit] = useState(100);
@@ -103,6 +122,7 @@ export default function ExecutiveView({ orders }: ExecutiveViewProps) {
         { key: 'pct_produccion', label: '% Prod', width: '70px' },
         { key: 'pct_planificado', label: '% Planif', width: '70px' },
         { key: 'valor_total_pedido', label: 'Valor Total', width: '110px' },
+        { key: 'estado_despacho', label: 'Estado despacho', width: '130px' },
         { key: 'fecha_compromiso', label: 'Fecha Comp', width: '105px' }
     ];
 
@@ -150,6 +170,7 @@ export default function ExecutiveView({ orders }: ExecutiveViewProps) {
                                 <ExecutiveTableRow 
                                     key={row.ov} 
                                     row={row} 
+                                    onClick={onOrderClick}
                                 />
                             ))}
                         </tbody>

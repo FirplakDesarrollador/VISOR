@@ -143,4 +143,5 @@ export interface ExecutiveOrder {
     dias_atraso: number;
     prioridad: 'Alta' | 'Media' | 'Baja';
     estado_general: string;
+    estado_despacho?: string | null;
 }

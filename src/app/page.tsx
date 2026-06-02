@@ -13,7 +13,7 @@ import UserManagement from '@/components/UserManagement';
 import ExecutiveView from '@/components/ExecutiveView';
 import { supabase } from '@/services/supabase';
 import { storageService } from '@/services/storageService';
-import { getOrdersFromVisor, getExecutiveOrdersFromVisor } from '@/services/visorService';
+import { getOrdersFromVisor, mapOrdersToExecutive } from '@/services/visorService';
 import { Order, User, UserRole, ExecutiveOrder } from '@/types';
 
 export default function Home() {
@@ -62,8 +62,8 @@ export default function Home() {
           const { data: dbUser } = await supabase
             .from('Usuarios')
             .select('Rol_Visor, nombres, apellidos, Vendedor_asignado')
-            .eq('correo', userEmail)
-            .single();
+            .ilike('correo', userEmail.trim())
+            .maybeSingle();
 
           const dbRole = dbUser?.Rol_Visor || '';
           const rawVendedores = dbUser?.Vendedor_asignado || '';
@@ -106,10 +106,15 @@ export default function Home() {
 
           const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
 
+          const emailName = userEmail.split('@')[0]
+            .split('.')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+
           setUser({
             id: session.user.id,
             email: userEmail,
-            name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+            name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || emailName,
             role: normalizedRole,
             assignedVendor: assignedVendors
           });
@@ -311,10 +316,8 @@ export default function Home() {
         const role = user ? user.role : 'Externo';
         const vendedorFilter = role === 'Vendedor' ? user?.assignedVendor : undefined;
 
-        const [data, execData] = await Promise.all([
-            getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter),
-            user ? getExecutiveOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter) : Promise.resolve([])
-        ]);
+        const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter);
+        const execData = user ? mapOrdersToExecutive(data) : [];
         
         setAllOrders(data);
         setExecutiveOrders(execData);
@@ -371,6 +374,7 @@ export default function Home() {
         "PLAN": item.cantidad_planificada,
         "VALOR UNITARIO": item.precio_unitario ?? '',
         "VALOR TOTAL": item.valor_total ?? '',
+        "ESTADO DESPACHO": item.estado_despacho || order.estado_despacho || '',
         "TRANSPORTADOR": item.transportador || order.transportador || '',
         "GUÍA": item.numero_guia || order.numero_guia || '',
         "FECHA OV": order.fecha_ingreso,
@@ -484,7 +488,7 @@ export default function Home() {
           ) : selectedOrder ? (
             <OrderDetail
               order={selectedOrder}
-              role={user?.role === 'Asesor' ? 'Asesor' : 'Backoffice'}
+              role={user?.role || 'Externo'}
               onBack={() => setSelectedOrder(null)}
             />
           ) : activeTab === 'dashboard' ? (
@@ -492,7 +496,7 @@ export default function Home() {
           ) : (
             <>
               <FilterBar
-                user={user ? { ...user, role: user.role === 'Asesor' ? 'Asesor' : 'Backoffice' } : null}
+                user={user}
                 onLoginClick={() => setIsLoginOpen(true)}
                 onLogoutClick={async () => {
                   await supabase.auth.signOut();
@@ -550,7 +554,15 @@ export default function Home() {
                   </div>
                 ) : user ? (
                   viewMode === 'ejecutiva' ? (
-                    <ExecutiveView orders={finalExecutiveOrders} />
+                    <ExecutiveView 
+                      orders={finalExecutiveOrders} 
+                      onOrderClick={(ov) => {
+                        const matchedOrder = allOrders.find(o => o.numero_orden_venta === ov);
+                        if (matchedOrder) {
+                          setSelectedOrder(matchedOrder);
+                        }
+                      }}
+                    />
                   ) : (
                     <TableView 
                       orders={finalOrders} 
