@@ -13,7 +13,7 @@ import UserManagement from '@/components/UserManagement';
 import ExecutiveView from '@/components/ExecutiveView';
 import { supabase } from '@/services/supabase';
 import { storageService } from '@/services/storageService';
-import { getOrdersFromVisor, mapOrdersToExecutive } from '@/services/visorService';
+import { getOrdersFromVisor, mapOrdersToExecutive, ProgressCallback } from '@/services/visorService';
 import { Order, User, UserRole, ExecutiveOrder } from '@/types';
 
 export default function Home() {
@@ -28,6 +28,7 @@ export default function Home() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loading, setLoading] = useState(true); // Start as loading to avoid flash
   const [isSessionChecked, setIsSessionChecked] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState<{ loaded: number; estimated: number } | null>(null);
 
   // --- PERSISTENCE INITIALIZATION ---
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -316,7 +317,11 @@ export default function Home() {
         const role = user ? user.role : 'Externo';
         const vendedorFilter = role === 'Vendedor' ? user?.assignedVendor : undefined;
 
-        const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter);
+        const onProgress: ProgressCallback = (loaded, estimated) => {
+          setLoadingProgress({ loaded, estimated: estimated || loaded });
+        };
+
+        const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter, onProgress);
         const execData = user ? mapOrdersToExecutive(data) : [];
         
         setAllOrders(data);
@@ -325,6 +330,7 @@ export default function Home() {
         console.error("Fetch orders failed", error);
       } finally {
         setLoading(false);
+        setLoadingProgress(null);
       }
     };
 
@@ -468,22 +474,62 @@ export default function Home() {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
           {loading ? (
             <div className="space-y-8">
-              {/* Header Skeleton */}
-              <div className="skeleton h-64 w-full shadow-lg shadow-slate-200/50"></div>
-              
-              {/* Cards Skeleton Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="skeleton h-32 w-full rounded-2xl shadow-sm"></div>
-                ))}
-              </div>
-
-              {/* List Skeleton */}
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="skeleton h-20 w-full rounded-xl"></div>
-                ))}
-              </div>
+              {/* Barra de progreso de carga */}
+              {loadingProgress ? (
+                <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-500">
+                  <div className="w-full max-w-md mx-auto">
+                    {/* Icono animado */}
+                    <div className="flex justify-center mb-6">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                        <svg className="w-8 h-8 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    {/* Texto de progreso */}
+                    <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Cargando datos del servidor</h3>
+                    <p className="text-sm text-slate-500 text-center mb-6">
+                      {loadingProgress.loaded.toLocaleString()} registros descargados
+                      {loadingProgress.estimated > loadingProgress.loaded && (
+                        <span className="text-slate-400"> — descargando más...</span>
+                      )}
+                    </p>
+                    
+                    {/* Barra de progreso */}
+                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+                        style={{ 
+                          width: loadingProgress.estimated > 0 
+                            ? `${Math.min((loadingProgress.loaded / loadingProgress.estimated) * 100, 95)}%` 
+                            : '30%' 
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Indicador de lotes */}
+                    <p className="text-xs text-slate-400 text-center mt-3 font-medium">
+                      Lote {Math.ceil(loadingProgress.loaded / 1000)} • Carga progresiva activada
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Header Skeleton (solo se muestra al inicio, antes del primer lote) */}
+                  <div className="skeleton h-64 w-full shadow-lg shadow-slate-200/50"></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="skeleton h-32 w-full rounded-2xl shadow-sm"></div>
+                    ))}
+                  </div>
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className="skeleton h-20 w-full rounded-xl"></div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           ) : selectedOrder ? (
             <OrderDetail

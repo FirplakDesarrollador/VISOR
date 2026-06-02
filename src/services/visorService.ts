@@ -1,48 +1,133 @@
 import { supabase } from './supabase';
 import { Order, OrderItem, VisorRow, UserRole, ExecutiveOrder } from '@/types';
 
-export const getOrdersFromVisor = async (role: UserRole, vendedorFilter?: string | string[]): Promise<Order[]> => {
-    // In a real scenario, we might filter by role or vendor here
-    let query = supabase.from('VISOR')
-        .select('*')
-        .neq('Código del cliente', 'CN890927404-01');
+// Nota: select('*') se mantiene porque PostgREST no soporta columnas con
+// caracteres especiales (#, espacios, acentos, paréntesis) en el string select.
+// La optimización real viene de la paginación, caché y progreso.
+
+// ============================================================
+// Caché en memoria — evita re-descargar 55 MB en cada cambio de sesión
+// ============================================================
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+let visorCache: {
+    data: VisorRow[];
+    timestamp: number;
+    cacheKey: string;
+} | null = null;
+
+// ============================================================
+// Callback de progreso para la UI
+// ============================================================
+export type ProgressCallback = (loaded: number, estimatedTotal?: number) => void;
+
+// ============================================================
+// Función de paginación — descarga en lotes de 1000 filas
+// Supabase/PostgREST limita a 1000 filas por defecto.
+// Sin esto, los datos pueden estar TRUNCADOS silenciosamente.
+// ============================================================
+const PAGE_SIZE = 1000;
+
+
+const fetchAllPaginatedFiltered = async (
+    role: UserRole,
+    vendedorFilter?: string | string[],
+    onProgress?: ProgressCallback
+): Promise<VisorRow[]> => {
+    const allData: VisorRow[] = [];
+    let from = 0;
+    let hasMore = true;
+    let batchNumber = 0;
+
+    while (hasMore) {
+        let query = supabase
+            .from('VISOR')
+            .select('*')
+            .neq('Código del cliente', 'CN890927404-01');
+
+        // Reglas de Negocio RBAC:
+        if (role === 'Asesor') {
+            if (Array.isArray(vendedorFilter) && vendedorFilter.length > 0) {
+                query = query.in('vendedor', vendedorFilter);
+            } else if (typeof vendedorFilter === 'string' && vendedorFilter.trim() !== '') {
+                query = query.ilike('vendedor', `%${vendedorFilter.trim()}%`);
+            } else {
+                query = query.eq('vendedor', 'SESSION_IDENTITY_MISSING');
+            }
+        }
+
+        const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+            console.error(`Error fetching VISOR batch ${batchNumber}:`, error);
+            throw new Error(`Supabase query failed (batch ${batchNumber}): ${error.message || JSON.stringify(error)}`);
+        }
+
+        const batch = (data || []) as unknown as VisorRow[];
+        allData.push(...batch);
+        batchNumber++;
+
+        if (onProgress) {
+            const estimated = batch.length === PAGE_SIZE ? allData.length + PAGE_SIZE : allData.length;
+            onProgress(allData.length, estimated);
+        }
+
+        hasMore = batch.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+    }
+
+    console.log(`VISOR: Descargados ${allData.length} registros en ${batchNumber} lotes`);
+    return allData;
+};
+
+export const getOrdersFromVisor = async (
+    role: UserRole,
+    vendedorFilter?: string | string[],
+    onProgress?: ProgressCallback
+): Promise<Order[]> => {
+    // Generar clave de caché basada en los parámetros de la consulta
+    const cacheKey = `${role}|${Array.isArray(vendedorFilter) ? vendedorFilter.sort().join(',') : vendedorFilter || ''}`;
+
+    // Verificar caché
+    if (visorCache && visorCache.cacheKey === cacheKey && (Date.now() - visorCache.timestamp) < CACHE_TTL) {
+        console.log('VISOR: Usando datos en caché (edad:', Math.round((Date.now() - visorCache.timestamp) / 1000), 'segundos)');
+        if (onProgress) onProgress(visorCache.data.length, visorCache.data.length);
+
+        // Filtrar por fecha igualmente (usa la misma lógica)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const filteredData = filterByDate(visorCache.data, sixMonthsAgo);
+        return groupRowsIntoOrders(filteredData);
+    }
+
+    // Descargar con paginación progresiva
+    const rawData = await fetchAllPaginatedFiltered(role, vendedorFilter, onProgress);
+
+    // Guardar en caché
+    visorCache = {
+        data: rawData,
+        timestamp: Date.now(),
+        cacheKey,
+    };
 
     // Optimización de rendimiento: Filtrar por fecha localmente 
     // ya que 'Fecha de ingreso' es texto en formato DD/MM/YYYY en la base de datos
     // y query.gte() hace una comparación de strings incorrecta.
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    
-    // Reglas de Negocio RBAC:
-    if (role === 'Asesor') {
-        if (Array.isArray(vendedorFilter) && vendedorFilter.length > 0) {
-            query = query.in('vendedor', vendedorFilter);
-        } else if (typeof vendedorFilter === 'string' && vendedorFilter.trim() !== '') {
-            query = query.ilike('vendedor', `%${vendedorFilter.trim()}%`);
-        } else {
-            query = query.eq('vendedor', 'SESSION_IDENTITY_MISSING');
-        }
-    }
+    const filteredData = filterByDate(rawData, sixMonthsAgo);
 
-    const { data, error } = await query;
+    return groupRowsIntoOrders(filteredData);
+};
 
-    if (error) {
-        console.error('Error fetching VISOR data (raw):', error);
-        console.error('Error fetching VISOR data (stringified):', JSON.stringify(error));
-        console.error('Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-            name: error.name
-        });
-        throw new Error(`Supabase query failed: ${error.message || JSON.stringify(error)}`);
-    }
+/** Función para invalidar la caché manualmente (ej: tras actualizar datos) */
+export const invalidateVisorCache = () => {
+    visorCache = null;
+    console.log('VISOR: Caché invalidada');
+};
 
-    if (!data) return [];
-
-    // Local filtering by date to replace the removed .gte()
-    const filteredData = (data as unknown as VisorRow[]).filter(row => {
+/** Filtro local por fecha — se mantiene porque la columna es texto DD/MM/YYYY */
+const filterByDate = (data: VisorRow[], sixMonthsAgo: Date): VisorRow[] => {
+    return data.filter(row => {
         const dateStr = row['Fecha de ingreso'];
         if (!dateStr) return true; // keep if no date
         const parts = String(dateStr).split('/');
@@ -55,8 +140,6 @@ export const getOrdersFromVisor = async (role: UserRole, vendedorFilter?: string
         }
         return true;
     });
-
-    return groupRowsIntoOrders(filteredData);
 };
 
 const normalizeOrderState = (state: string | null | undefined): string => {
