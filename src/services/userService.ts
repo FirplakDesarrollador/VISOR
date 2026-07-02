@@ -59,10 +59,8 @@ export const getUsers = async (): Promise<UserManagement[]> => {
 export const getDistinctVendedores = async (): Promise<string[]> => {
     try {
         const { data, error } = await supabase
-            .from('VISOR')
-            .select('vendedor')
-            .not('vendedor', 'is', null)
-            .neq('vendedor', '');
+            .from('vendedores_distintos')
+            .select('vendedor');
 
         if (error) {
             console.error('Error fetching distinct vendedores:', error);
@@ -73,7 +71,7 @@ export const getDistinctVendedores = async (): Promise<string[]> => {
             .map(r => r.vendedor?.trim())
             .filter(v => v && v !== 'null');
         
-        return Array.from(new Set(vendors)).sort();
+        return vendors;
     } catch (e: any) {
         console.error('Unexpected error in getDistinctVendedores:', e.message || e);
         return [];

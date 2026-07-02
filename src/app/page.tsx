@@ -306,6 +306,16 @@ export default function Home() {
   useEffect(() => {
     if (!isSessionChecked) return;
 
+    // Si el usuario no está logueado, no cargamos nada inicialmente
+    // y dejamos que la página cargue de inmediato.
+    if (!user) {
+      setAllOrders([]);
+      setExecutiveOrders([]);
+      setLoading(false);
+      setLoadingProgress(null);
+      return;
+    }
+
     const fetchOrders = async () => {
       // Solo mostramos el esqueleto de carga si no tenemos datos previos
       // para evitar el "flickering" visual en actualizaciones de sesión.
@@ -348,11 +358,36 @@ export default function Home() {
     return Array.from(statuses).sort();
   }, [allOrders]);
 
-  const handleSearch = (newFilters: SearchFilters = filters, statusFilter: string | null = activeStatusFilter) => {
+  const handleSearch = async (newFilters: SearchFilters = filters, statusFilter: string | null = activeStatusFilter) => {
     setHasSearched(true);
     setCurrentPage(1);
     setFilters(newFilters);
     setActiveStatusFilter(statusFilter);
+
+    // Búsqueda en tiempo real desde la BD para usuarios no autenticados
+    if (!user) {
+      if (!newFilters.ov && !newFilters.oc && !newFilters.nit) {
+        setAllOrders([]);
+        return;
+      }
+
+      setLoading(true);
+      setLoadingProgress({ loaded: 0, estimated: 1 });
+      
+      try {
+        const onProgress: ProgressCallback = (loaded, estimated) => {
+          setLoadingProgress({ loaded, estimated: estimated || loaded });
+        };
+        const data = await getOrdersFromVisor('Externo', undefined, onProgress, newFilters);
+        setAllOrders(data);
+      } catch (error) {
+        console.error("Search order failed", error);
+        setAllOrders([]);
+      } finally {
+        setLoading(false);
+        setLoadingProgress(null);
+      }
+    }
   };
 
   const handleDownload = () => {
@@ -510,7 +545,7 @@ export default function Home() {
                     
                     {/* Indicador de lotes */}
                     <p className="text-xs text-slate-400 text-center mt-3 font-medium">
-                      Lote {Math.ceil(loadingProgress.loaded / 1000)} • Carga progresiva activada
+                      Carga paralela optimizada • {Math.round((loadingProgress.loaded / loadingProgress.estimated) * 100)}%
                     </p>
                   </div>
                 </div>

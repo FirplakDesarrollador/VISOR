@@ -1,14 +1,18 @@
 import { supabase } from './supabase';
+// Removed import: PostgrestFilterBuilder is not exported from '@supabase/supabase-js'
 import { Order, OrderItem, VisorRow, UserRole, ExecutiveOrder } from '@/types';
+
+import { SearchFilters } from '@/components/FilterBar';
 
 // Nota: select('*') se mantiene porque PostgREST no soporta columnas con
 // caracteres especiales (#, espacios, acentos, paréntesis) en el string select.
-// La optimización real viene de la paginación, caché y progreso.
+// Optimización: pages de 5000 filas, 100% paralelo, caché 10 min,
+// key-map pre-computado para procesamiento O(1) por fila.
 
 // ============================================================
 // Caché en memoria — evita re-descargar 55 MB en cada cambio de sesión
 // ============================================================
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos — reduce re-descargas innecesarias
 let visorCache: {
     data: VisorRow[];
     timestamp: number;
@@ -27,63 +31,182 @@ export type ProgressCallback = (loaded: number, estimatedTotal?: number) => void
 // ============================================================
 const PAGE_SIZE = 1000;
 
+// Máximo de filas por petición cuando el servidor soporta más de 1000.
+// Se auto-detecta: si la primera petición devuelve exactamente PAGE_SIZE,
+// el servidor tiene cap en 1000 y se mantiene. Si devuelve más, se usa
+// PREFERRED_PAGE_SIZE para reducir el número total de peticiones.
+const PREFERRED_PAGE_SIZE = 5000;
+
+const applyFilters = <T>(
+    query: T,
+    role: UserRole,
+    vendedorFilter?: string | string[],
+    searchFilters?: SearchFilters
+): T => {
+    let q = (query as any).neq('Código del cliente', 'CN890927404-01');
+
+    if (role === 'Externo') {
+        if (searchFilters?.ov) {
+            const ovNum = parseInt(searchFilters.ov, 10);
+            if (!isNaN(ovNum)) {
+                q = q.eq('Orden de venta', ovNum);
+            } else {
+                q = q.eq('Orden de venta', -1);
+            }
+        }
+        if (searchFilters?.oc) {
+            q = q.ilike('Orden de compra', `%${searchFilters.oc.trim()}%`);
+        }
+        if (searchFilters?.nit) {
+            q = q.eq('Código del cliente', searchFilters.nit.trim());
+        }
+        return q as unknown as T;
+    }
+
+    // Para usuarios logueados, filtrar los últimos 6 meses en base de datos
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
+    q = q.gte('fecha_ingreso_parsed', sixMonthsAgoStr);
+
+    if (role === 'Asesor') {
+        if (Array.isArray(vendedorFilter) && vendedorFilter.length > 0) {
+            q = q.in('vendedor', vendedorFilter);
+        } else if (typeof vendedorFilter === 'string' && vendedorFilter.trim() !== '') {
+            q = q.ilike('vendedor', `%${vendedorFilter.trim()}%`);
+        } else {
+            q = q.eq('vendedor', 'SESSION_IDENTITY_MISSING');
+        }
+    }
+
+    return q as unknown as T;
+};
 
 const fetchAllPaginatedFiltered = async (
     role: UserRole,
     vendedorFilter?: string | string[],
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    searchFilters?: SearchFilters
 ): Promise<VisorRow[]> => {
-    const allData: VisorRow[] = [];
-    let from = 0;
-    let hasMore = true;
-    let batchNumber = 0;
-
-    while (hasMore) {
-        let query = supabase
-            .from('VISOR')
-            .select('*')
-            .neq('Código del cliente', 'CN890927404-01');
-
-        // Reglas de Negocio RBAC:
-        if (role === 'Asesor') {
-            if (Array.isArray(vendedorFilter) && vendedorFilter.length > 0) {
-                query = query.in('vendedor', vendedorFilter);
-            } else if (typeof vendedorFilter === 'string' && vendedorFilter.trim() !== '') {
-                query = query.ilike('vendedor', `%${vendedorFilter.trim()}%`);
-            } else {
-                query = query.eq('vendedor', 'SESSION_IDENTITY_MISSING');
-            }
+    if (role === 'Externo') {
+        if (!searchFilters || (!searchFilters.ov && !searchFilters.oc && !searchFilters.nit)) {
+            return [];
         }
-
-        const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
-
+        
+        const query = applyFilters(
+            supabase.from('visor_recent').select('*'),
+            role,
+            vendedorFilter,
+            searchFilters
+        );
+        const { data, error } = await query;
+        
         if (error) {
-            console.error(`Error fetching VISOR batch ${batchNumber}:`, error);
-            throw new Error(`Supabase query failed (batch ${batchNumber}): ${error.message || JSON.stringify(error)}`);
+            console.error('Error fetching external order:', error);
+            throw new Error(`Error fetching order: ${error.message}`);
         }
-
-        const batch = (data || []) as unknown as VisorRow[];
-        allData.push(...batch);
-        batchNumber++;
-
-        if (onProgress) {
-            const estimated = batch.length === PAGE_SIZE ? allData.length + PAGE_SIZE : allData.length;
-            onProgress(allData.length, estimated);
-        }
-
-        hasMore = batch.length === PAGE_SIZE;
-        from += PAGE_SIZE;
+        return (data || []) as unknown as VisorRow[];
     }
 
-    console.log(`VISOR: Descargados ${allData.length} registros en ${batchNumber} lotes`);
+    // Obtener el conteo total para la paginación paralela
+    const countQuery = applyFilters(
+        supabase.from('visor_recent').select('*', { count: 'exact', head: true }),
+        role,
+        vendedorFilter,
+        searchFilters
+    );
+    
+    const { count, error: countError } = await countQuery;
+    if (countError) {
+        console.error('Error getting count for parallel fetch:', countError);
+        throw new Error(`Count failed: ${countError.message}`);
+    }
+
+    const totalRows = count || 0;
+    console.log(`VISOR: Total registros a descargar: ${totalRows}`);
+
+    if (totalRows === 0) return [];
+
+    // ── Auto-detectar tamaño de página óptimo ──
+    // Intentamos una primera petición con PREFERRED_PAGE_SIZE.
+    // Si el servidor la capea a PAGE_SIZE, usamos el fallback.
+    const probeQuery = applyFilters(
+        supabase.from('visor_recent').select('*'),
+        role,
+        vendedorFilter,
+        searchFilters
+    ).range(0, PREFERRED_PAGE_SIZE - 1);
+
+    const { data: probeData, error: probeError } = await probeQuery;
+    if (probeError) {
+        console.error('Error in probe request:', probeError);
+        throw new Error(`Probe failed: ${probeError.message}`);
+    }
+
+    const probeRows = (probeData || []) as unknown as VisorRow[];
+    // Si el servidor devolvió exactamente PAGE_SIZE (1000), tiene cap.
+    const effectivePageSize = probeRows.length === PAGE_SIZE ? PAGE_SIZE : PREFERRED_PAGE_SIZE;
+    let loadedCount = probeRows.length;
+    if (onProgress) onProgress(loadedCount, totalRows);
+
+    console.log(`VISOR: Page size efectivo: ${effectivePageSize} (probe devolvió ${probeRows.length})`);
+
+    // Si ya tenemos todos los datos con la primera petición
+    if (loadedCount >= totalRows) {
+        console.log(`VISOR: Descarga completa en 1 petición (${loadedCount} filas)`);
+        return probeRows;
+    }
+
+    // ── Descargar páginas restantes 100% en paralelo ──
+    const remainingStart = loadedCount;
+    const remainingPages = Math.ceil((totalRows - remainingStart) / effectivePageSize);
+
+    const fetchPage = async (pageIdx: number): Promise<VisorRow[]> => {
+        const from = remainingStart + pageIdx * effectivePageSize;
+        const to = Math.min(from + effectivePageSize - 1, totalRows - 1);
+
+        const pageQuery = applyFilters(
+            supabase.from('visor_recent').select('*'),
+            role,
+            vendedorFilter,
+            searchFilters
+        ).range(from, to);
+
+        const { data, error } = await pageQuery;
+        if (error) {
+            console.error(`Error fetching page ${pageIdx}:`, error);
+            throw new Error(`Page ${pageIdx} failed: ${error.message}`);
+        }
+
+        const rows = (data || []) as unknown as VisorRow[];
+        loadedCount += rows.length;
+        if (onProgress) onProgress(loadedCount, totalRows);
+        return rows;
+    };
+
+    // Disparar TODAS las páginas restantes en paralelo (sin batching)
+    const pageResults = await Promise.all(
+        Array.from({ length: remainingPages }, (_, i) => fetchPage(i))
+    );
+
+    // Concatenar: probe + todas las páginas restantes
+    const allData = probeRows.concat(...pageResults);
+    console.log(`VISOR: Descargados ${allData.length} registros en ${remainingPages + 1} peticiones paralelas`);
     return allData;
 };
 
 export const getOrdersFromVisor = async (
     role: UserRole,
     vendedorFilter?: string | string[],
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    searchFilters?: SearchFilters
 ): Promise<Order[]> => {
+    // Para usuarios externos, no usar caché y consultar directamente
+    if (role === 'Externo') {
+        const rawData = await fetchAllPaginatedFiltered(role, vendedorFilter, onProgress, searchFilters);
+        return groupRowsIntoOrders(rawData);
+    }
+
     // Generar clave de caché basada en los parámetros de la consulta
     const cacheKey = `${role}|${Array.isArray(vendedorFilter) ? vendedorFilter.sort().join(',') : vendedorFilter || ''}`;
 
@@ -92,15 +215,14 @@ export const getOrdersFromVisor = async (
         console.log('VISOR: Usando datos en caché (edad:', Math.round((Date.now() - visorCache.timestamp) / 1000), 'segundos)');
         if (onProgress) onProgress(visorCache.data.length, visorCache.data.length);
 
-        // Filtrar por fecha igualmente (usa la misma lógica)
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
         const filteredData = filterByDate(visorCache.data, sixMonthsAgo);
         return groupRowsIntoOrders(filteredData);
     }
 
-    // Descargar con paginación progresiva
-    const rawData = await fetchAllPaginatedFiltered(role, vendedorFilter, onProgress);
+    // Descargar con paginación progresiva optimizada
+    const rawData = await fetchAllPaginatedFiltered(role, vendedorFilter, onProgress, searchFilters);
 
     // Guardar en caché
     visorCache = {
@@ -109,9 +231,6 @@ export const getOrdersFromVisor = async (
         cacheKey,
     };
 
-    // Optimización de rendimiento: Filtrar por fecha localmente 
-    // ya que 'Fecha de ingreso' es texto en formato DD/MM/YYYY en la base de datos
-    // y query.gte() hace una comparación de strings incorrecta.
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     const filteredData = filterByDate(rawData, sixMonthsAgo);
@@ -198,6 +317,12 @@ const isServiceItem = (item: { codigo_producto: string; descripcion_producto: st
 const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
     const ordersMap = new Map<string, Order>();
 
+    // ── Pre-compute normalized column key map (una sola vez) ──
+    // Evita re-normalizar TODOS los keys de cada fila en cada llamada a getVal.
+    // Ahorro: de ~2.5 M operaciones de string a ~30 (una por columna).
+    const normalizeKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let colKeyMap: Map<string, string> | null = null;
+
     rows.forEach(row => {
         // Ignorar registros de FLETES o FINANZAS completamente de la lógica logística
         if (isFleteOrFinanzas(row)) return;
@@ -249,14 +374,18 @@ const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
         if (row["# Factura"] && !order.numero_factura) order.numero_factura = formatLargeNumber(row["# Factura"]);
         if (row["Fecha de la factura"] && !order.fecha_factura) order.fecha_factura = row["Fecha de la factura"];
 
+        // Construir el mapa de claves UNA sola vez (todas las filas tienen las mismas columnas)
+        if (!colKeyMap) {
+            colKeyMap = new Map();
+            for (const key of Object.keys(row)) {
+                colKeyMap.set(normalizeKey(key), key);
+            }
+        }
+
         const getVal = (searchKey: string) => {
-            const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const target = clean(searchKey);
-            
-            // Búsqueda estricta tras normalización para evitar colisiones
-            const actualKey = Object.keys(row).find(k => clean(k) === target);
+            const actualKey = colKeyMap!.get(normalizeKey(searchKey));
             const val = actualKey ? (row as any)[actualKey] : null;
-            
+
             if (val !== undefined && val !== null && String(val).toLowerCase() !== 'null' && String(val).trim() !== '') {
                 const num = parseFloat(String(val).replace(/,/g, ''));
                 return isNaN(num) ? 0 : num;
