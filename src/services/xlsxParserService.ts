@@ -66,7 +66,8 @@ export async function parseXlsxFile(
     onProgress({ phase: "parsing", pct: 15, message: "Analizando estructura del archivo..." });
     await yieldUI(); // asegura que React renderice el estado antes del bloqueo
 
-    const xlsxModule = await import("xlsx");
+    // @ts-ignore - Ignore type definitions for the dist bundle
+    const xlsxModule = await import("xlsx/dist/xlsx.full.min.js");
     const XLSX = xlsxModule.default || xlsxModule;
 
     const workbook = XLSX.read(buffer, {
@@ -85,7 +86,7 @@ export async function parseXlsxFile(
 
     const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
         defval: null,
-        raw: true,
+        raw: false,
     });
 
     const totalRows = rawRows.length;
