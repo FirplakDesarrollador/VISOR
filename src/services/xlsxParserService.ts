@@ -37,6 +37,18 @@ type OnProgress = (p: ParseProgress) => void;
 /** Yield al event loop para que React pueda re-renderizar */
 const yieldUI = () => new Promise<void>((r) => setTimeout(r, 30));
 
+/** Convierte una fecha serial de Excel a YYYY-MM-DD */
+function parseExcelDate(serial: any): any {
+    if (typeof serial !== "number") return serial;
+    if (serial < 30000 || serial > 80000) return serial;
+    const utcDays = Math.floor(serial - 25569);
+    const date = new Date(utcDays * 86400 * 1000);
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 /** Lee el File como ArrayBuffer reportando progreso del FileReader */
 function readFile(file: File, onPct: (p: number) => void): Promise<ArrayBuffer> {
     return new Promise((resolve, reject) => {
@@ -86,8 +98,17 @@ export async function parseXlsxFile(
 
     const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
         defval: null,
-        raw: false,
+        raw: true,
     });
+
+    // Corregir fechas seriales de Excel a formato YYYY-MM-DD
+    for (const row of rawRows) {
+        for (const key of Object.keys(row)) {
+            if (key.toLowerCase().includes("fecha") && typeof row[key] === "number") {
+                row[key] = parseExcelDate(row[key]);
+            }
+        }
+    }
 
     const totalRows = rawRows.length;
 
