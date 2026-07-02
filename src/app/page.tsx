@@ -187,8 +187,8 @@ export default function Home() {
   }, [filters, activeStatusFilter, currentPage, hasSearched, envioFilter, viewMode]);
 
   // --- HELPERS (Memoized) ---
-  const normalize = useCallback((str: string) =>
-    (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(), []);
+  const normalize = useCallback((str: any) =>
+    (String(str || '')).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(), []);
 
   const isItemInStatus = useCallback((item: any, order: Order, status: string) => {
     const itemState = normalize(item.estado_raw || order.estado_raw || '');
@@ -316,8 +316,8 @@ export default function Home() {
 
     // Sort by entry date (Descending)
     return [...result].sort((a, b) => {
-      const dateA = a.fecha_ingreso || '';
-      const dateB = b.fecha_ingreso || '';
+      const dateA = String(a.fecha_ingreso || '');
+      const dateB = String(b.fecha_ingreso || '');
       return dateB.localeCompare(dateA);
     });
   }, [searchedOrders, activeStatusFilter, envioFilter, user, normalize, isItemInStatus]);
