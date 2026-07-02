@@ -96,7 +96,7 @@ export async function parseXlsxFile(
     onProgress({ phase: "parsing", pct: 40, message: "Convirtiendo filas..." });
     await yieldUI();
 
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    const rawRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, {
         defval: null,
         raw: true,
     });
