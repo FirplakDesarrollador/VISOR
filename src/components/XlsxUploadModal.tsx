@@ -108,8 +108,8 @@ export default function XlsxUploadModal({
   };
 
   const processFile = useCallback(async (file: File) => {
-    if (!file.name.match(/\.xlsx$/i)) {
-      setError("Solo se aceptan archivos .xlsx");
+    if (!file.name.match(/\.xlsx?$/i)) {
+      setError("Solo se aceptan archivos .xlsx o .xls");
       return;
     }
     setError(null);
@@ -171,7 +171,7 @@ export default function XlsxUploadModal({
             </div>
             <div>
               <h2 className="text-white font-black text-lg leading-tight">Cargar Datos</h2>
-              <p className="text-white/60 text-xs font-medium mt-0.5">Solo Administradores · Archivo .xlsx</p>
+              <p className="text-white/60 text-xs font-medium mt-0.5">Solo Administradores &middot; Archivo .xlsx o .xls</p>
             </div>
           </div>
           {!isProcessing && (
@@ -252,7 +252,7 @@ export default function XlsxUploadModal({
                 <input
                   ref={inputRef}
                   type="file"
-                  accept=".xlsx"
+                  accept=".xlsx, .xls"
                   className="hidden"
                   onChange={handleFileInput}
                 />
@@ -260,13 +260,13 @@ export default function XlsxUploadModal({
                   <IconUpload />
                 </div>
                 <p className={`font-bold text-sm transition-colors ${dragging ? "text-blue-700" : "text-slate-600"}`}>
-                  {dragging ? "Suelta el archivo aquí" : "Arrastra tu archivo .xlsx aquí"}
+                  {dragging ? "Suelta el archivo aquí" : "Arrastra tu archivo .xlsx o .xls aquí"}
                 </p>
                 <p className="text-slate-400 text-xs mt-1">
                   o <span className="text-blue-600 font-semibold">haz clic para seleccionar</span>
                 </p>
                 <p className="text-slate-300 text-[10px] mt-3 font-medium uppercase tracking-wide">
-                  Solo .xlsx · Hasta 100,000 filas recomendado
+                  Solo .xlsx o .xls &middot; Hasta 100,000 filas recomendado
                 </p>
               </div>
 
