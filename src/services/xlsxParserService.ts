@@ -4,7 +4,6 @@
 // reutilizando la logica existente de visorService, y persiste
 // en IndexedDB para que los datos sobrevivan al reload.
 // ============================================================
-import { read, utils } from "xlsx";
 import { VisorRow, Order } from "@/types";
 import { groupRowsIntoOrders, mapOrdersToExecutive } from "./visorService";
 import { indexedDbService, XlsxMeta } from "./indexedDbService";
@@ -67,7 +66,10 @@ export async function parseXlsxFile(
     onProgress({ phase: "parsing", pct: 15, message: "Analizando estructura del archivo..." });
     await yieldUI(); // asegura que React renderice el estado antes del bloqueo
 
-    const workbook = read(buffer, {
+    const xlsxModule = await import("xlsx");
+    const XLSX = xlsxModule.default || xlsxModule;
+
+    const workbook = XLSX.read(buffer, {
         type: "array",
         cellDates: false,   // mas rapido
         cellNF: false,
@@ -81,7 +83,7 @@ export async function parseXlsxFile(
     onProgress({ phase: "parsing", pct: 40, message: "Convirtiendo filas..." });
     await yieldUI();
 
-    const rawRows = utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
         defval: null,
         raw: true,
     });
