@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import OrderCard from '@/components/OrderCard';
 import TableView from '@/components/TableView';
@@ -33,8 +33,13 @@ export default function Home() {
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState<{ loaded: number; estimated: number } | null>(null);
 
-  // undefined = aún verificando IndexedDB, null = sin datos xlsx, XlsxMeta = modo xlsx activo
-  const [xlsxMeta, setXlsxMeta] = useState<XlsxMeta | null | undefined>(undefined);
+  // null = sin datos xlsx | XlsxMeta = modo xlsx activo
+  // Empieza en null para que Supabase arranque de inmediato si no hay xlsx.
+  const [xlsxMeta, setXlsxMeta] = useState<XlsxMeta | null>(null);
+  // true mientras se leen ordenes de IndexedDB (para mostrar loading especifico)
+  const [xlsxLoadingFromDb, setXlsxLoadingFromDb] = useState(false);
+  // Previene que el fetch de Supabase sobreescriba los datos del xlsx
+  const xlsxOverrideRef = useRef(false);
 
   // --- PERSISTENCE INITIALIZATION ---
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -49,27 +54,36 @@ export default function Home() {
 
   // --- INITIAL MOUNT: Load persistence and check session ---
   useEffect(() => {
-    // 0. Verificar si hay datos xlsx en IndexedDB (tiene prioridad sobre Supabase)
+    // 0. Verificar si hay datos xlsx en IndexedDB
+    // Paso A: leer solo el metadata (rapido, <50ms)
+    // Paso B: si hay meta, cargar ordenes (puede tardar 2-5s pero mostramos loading especifico)
     const loadXlsx = async () => {
       try {
         const meta = await indexedDbService.getMeta();
-        if (meta) {
-          const orders = await indexedDbService.getOrders<Order>();
-          if (orders.length > 0) {
-            setAllOrders(orders);
-            setExecutiveOrders(mapOrdersToExecutive(orders));
-            setXlsxMeta(meta);
-            setLoading(false);
-            return;
-          }
+        if (!meta) return; // No hay datos xlsx, Supabase seguira su curso normal
+
+        // Hay datos xlsx: mostrar inmediatamente que estamos cargando del archivo
+        setXlsxMeta(meta);
+        setXlsxLoadingFromDb(true);
+
+        const orders = await indexedDbService.getOrders<Order>();
+        if (orders.length > 0) {
+          xlsxOverrideRef.current = true; // bloquea sobreescritura de Supabase
+          setAllOrders(orders);
+          setExecutiveOrders(mapOrdersToExecutive(orders));
+          setLoading(false);
+        } else {
+          // Meta existe pero no hay ordenes — limpiar estado inconsistente
+          setXlsxMeta(null);
         }
-        setXlsxMeta(null); // Verificado: no hay datos xlsx
       } catch (e) {
         console.warn('IndexedDB check failed:', e);
         setXlsxMeta(null);
+      } finally {
+        setXlsxLoadingFromDb(false);
       }
     };
-    loadXlsx();
+    loadXlsx(); // Fire-and-forget: no bloquea el fetch de Supabase
 
     // 1. Restore from storageService
     const saved = storageService.loadState();
@@ -330,15 +344,14 @@ export default function Home() {
   }, [executiveOrders, filters, normalize]);
 
   // --- DATA FETCHING ---
-  // Si hay datos xlsx en IndexedDB se usan en lugar de Supabase.
-  // El useEffect espera a que xlsxMeta se resuelva (no undefined).
+  // Corre en paralelo con el check de IndexedDB.
+  // Si xlsx llega primero (xlsxOverrideRef = true), el resultado de Supabase se descarta.
   useEffect(() => {
     if (!isSessionChecked) return;
-    if (xlsxMeta === undefined) return; // Aún verificando IndexedDB
 
-    // Modo XLSX activo: datos ya cargados en mount, no ir a Supabase.
+    // Modo XLSX activo: datos ya cargados (o en proceso de cargarse desde IndexedDB)
     if (xlsxMeta !== null) {
-      setLoading(false);
+      if (!xlsxLoadingFromDb) setLoading(false);
       return;
     }
 
@@ -352,9 +365,7 @@ export default function Home() {
     }
 
     const fetchOrders = async () => {
-      if (allOrders.length === 0) {
-        setLoading(true);
-      }
+      if (allOrders.length === 0) setLoading(true);
       try {
         const role = user ? user.role : 'Externo';
         const vendedorFilter = role === 'Vendedor' ? user?.assignedVendor : undefined;
@@ -362,6 +373,10 @@ export default function Home() {
           setLoadingProgress({ loaded, estimated: estimated || loaded });
         };
         const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter, onProgress);
+
+        // Si xlsx llego mientras Supabase cargaba, no sobreescribir
+        if (xlsxOverrideRef.current) return;
+
         const execData = user ? mapOrdersToExecutive(data) : [];
         setAllOrders(data);
         setExecutiveOrders(execData);
@@ -374,7 +389,7 @@ export default function Home() {
     };
 
     fetchOrders();
-  }, [user, isSessionChecked, xlsxMeta]);
+  }, [user, isSessionChecked, xlsxMeta, xlsxLoadingFromDb]);
 
   const rawStatuses = useMemo(() => {
     const statuses = new Set<string>();
@@ -604,6 +619,29 @@ export default function Home() {
                     <p className="text-xs text-slate-400 text-center mt-3 font-medium">
                       Carga paralela optimizada • {Math.round((loadingProgress.loaded / loadingProgress.estimated) * 100)}%
                     </p>
+                  </div>
+                </div>
+              ) : xlsxLoadingFromDb ? (
+                /* Pantalla especifica para carga desde archivo local (IndexedDB) */
+                <div className="flex flex-col items-center justify-center py-24 animate-in fade-in duration-300">
+                  <div className="w-full max-w-md mx-auto text-center">
+                    <div className="flex justify-center mb-6">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                        <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-800 mb-1">Cargando datos del archivo local</h3>
+                    <p className="text-sm text-slate-500 mb-2">{xlsxMeta?.fileName}</p>
+                    <p className="text-sm font-bold text-amber-600 mb-6">
+                      {xlsxMeta?.totalOrders.toLocaleString('es-CO')} órdenes · {xlsxMeta?.totalRows.toLocaleString('es-CO')} filas
+                    </p>
+                    {/* Barra animada indeterminada */}
+                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-3">Leyendo base de datos local del navegador...</p>
                   </div>
                 </div>
               ) : (
