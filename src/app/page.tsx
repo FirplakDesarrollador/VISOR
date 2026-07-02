@@ -11,8 +11,10 @@ import LoginModal from '@/components/LoginModal';
 import Pagination from '@/components/Pagination';
 import UserManagement from '@/components/UserManagement';
 import ExecutiveView from '@/components/ExecutiveView';
+import XlsxUploadModal from '@/components/XlsxUploadModal';
 import { supabase } from '@/services/supabase';
 import { storageService } from '@/services/storageService';
+import { indexedDbService, XlsxMeta } from '@/services/indexedDbService';
 import { getOrdersFromVisor, mapOrdersToExecutive, ProgressCallback } from '@/services/visorService';
 import { Order, User, UserRole, ExecutiveOrder } from '@/types';
 
@@ -26,9 +28,13 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'operativa' | 'ejecutiva'>('operativa');
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [loading, setLoading] = useState(true); // Start as loading to avoid flash
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState<{ loaded: number; estimated: number } | null>(null);
+
+  // undefined = aún verificando IndexedDB, null = sin datos xlsx, XlsxMeta = modo xlsx activo
+  const [xlsxMeta, setXlsxMeta] = useState<XlsxMeta | null | undefined>(undefined);
 
   // --- PERSISTENCE INITIALIZATION ---
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -43,6 +49,28 @@ export default function Home() {
 
   // --- INITIAL MOUNT: Load persistence and check session ---
   useEffect(() => {
+    // 0. Verificar si hay datos xlsx en IndexedDB (tiene prioridad sobre Supabase)
+    const loadXlsx = async () => {
+      try {
+        const meta = await indexedDbService.getMeta();
+        if (meta) {
+          const orders = await indexedDbService.getOrders<Order>();
+          if (orders.length > 0) {
+            setAllOrders(orders);
+            setExecutiveOrders(mapOrdersToExecutive(orders));
+            setXlsxMeta(meta);
+            setLoading(false);
+            return;
+          }
+        }
+        setXlsxMeta(null); // Verificado: no hay datos xlsx
+      } catch (e) {
+        console.warn('IndexedDB check failed:', e);
+        setXlsxMeta(null);
+      }
+    };
+    loadXlsx();
+
     // 1. Restore from storageService
     const saved = storageService.loadState();
     if (saved) {
@@ -302,12 +330,19 @@ export default function Home() {
   }, [executiveOrders, filters, normalize]);
 
   // --- DATA FETCHING ---
-  // Only re-fetch when the user/role changes or session is first checked.
+  // Si hay datos xlsx en IndexedDB se usan en lugar de Supabase.
+  // El useEffect espera a que xlsxMeta se resuelva (no undefined).
   useEffect(() => {
     if (!isSessionChecked) return;
+    if (xlsxMeta === undefined) return; // Aún verificando IndexedDB
 
-    // Si el usuario no está logueado, no cargamos nada inicialmente
-    // y dejamos que la página cargue de inmediato.
+    // Modo XLSX activo: datos ya cargados en mount, no ir a Supabase.
+    if (xlsxMeta !== null) {
+      setLoading(false);
+      return;
+    }
+
+    // Sin datos xlsx: flujo normal con Supabase.
     if (!user) {
       setAllOrders([]);
       setExecutiveOrders([]);
@@ -317,23 +352,17 @@ export default function Home() {
     }
 
     const fetchOrders = async () => {
-      // Solo mostramos el esqueleto de carga si no tenemos datos previos
-      // para evitar el "flickering" visual en actualizaciones de sesión.
       if (allOrders.length === 0) {
         setLoading(true);
       }
-      
       try {
         const role = user ? user.role : 'Externo';
         const vendedorFilter = role === 'Vendedor' ? user?.assignedVendor : undefined;
-
         const onProgress: ProgressCallback = (loaded, estimated) => {
           setLoadingProgress({ loaded, estimated: estimated || loaded });
         };
-
         const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter, onProgress);
         const execData = user ? mapOrdersToExecutive(data) : [];
-        
         setAllOrders(data);
         setExecutiveOrders(execData);
       } catch (error) {
@@ -345,7 +374,7 @@ export default function Home() {
     };
 
     fetchOrders();
-  }, [user, isSessionChecked]);
+  }, [user, isSessionChecked, xlsxMeta]);
 
   const rawStatuses = useMemo(() => {
     const statuses = new Set<string>();
@@ -495,8 +524,36 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-             {/* Dynamic badges or user info could go here if needed in header */}
+          <div className="flex items-center gap-3">
+
+             {/* Indicador de fuente de datos (xlsx vs Supabase) */}
+             {xlsxMeta && (
+               <div className="hidden md:flex items-center gap-2 py-1.5 px-3 bg-amber-500/20 rounded-full border border-amber-400/30">
+                 <svg className="w-3.5 h-3.5 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                 </svg>
+                 <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest whitespace-nowrap">
+                   Archivo local
+                 </span>
+               </div>
+             )}
+
+             {/* Botón Cargar Archivo — solo Administrador */}
+             {user?.role === 'Administrador' && (
+               <button
+                 onClick={() => setIsUploadOpen(true)}
+                 className="flex items-center gap-2 py-1.5 px-3 bg-white/10 hover:bg-white/20 rounded-full border border-white/20 transition-all group"
+               >
+                 <svg className="w-3.5 h-3.5 text-white/80 group-hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                 </svg>
+                 <span className="text-[10px] font-black text-white/70 group-hover:text-white uppercase tracking-widest whitespace-nowrap hidden sm:block">
+                   {xlsxMeta ? 'Actualizar archivo' : 'Cargar archivo'}
+                 </span>
+               </button>
+             )}
+
+             {/* Badge Conexión Segura */}
              <div className="hidden sm:flex items-center gap-2 py-1.5 px-3 bg-white/5 rounded-full border border-white/10">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[10px] font-black text-white/70 uppercase tracking-widest whitespace-nowrap">Conexión Segura</span>
@@ -693,6 +750,27 @@ export default function Home() {
           const { data, error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) return false;
           return !!data.user;
+        }}
+      />
+
+      {/* Modal de carga de archivo XLSX — solo visible para Administradores */}
+      <XlsxUploadModal
+        isOpen={isUploadOpen}
+        currentMeta={xlsxMeta ?? null}
+        onClose={() => setIsUploadOpen(false)}
+        onSuccess={(orders, meta) => {
+          setAllOrders(orders);
+          setExecutiveOrders(mapOrdersToExecutive(orders));
+          setXlsxMeta(meta);
+          setIsUploadOpen(false);
+        }}
+        onClear={async () => {
+          setXlsxMeta(null);
+          setAllOrders([]);
+          setExecutiveOrders([]);
+          setIsUploadOpen(false);
+          // Fuerza re-fetch desde Supabase
+          setLoading(true);
         }}
       />
     </div>

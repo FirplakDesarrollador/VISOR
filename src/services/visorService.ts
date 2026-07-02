@@ -314,7 +314,7 @@ const isServiceItem = (item: { codigo_producto: string; descripcion_producto: st
     return false;
 };
 
-const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
+export const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
     const ordersMap = new Map<string, Order>();
 
     // ── Pre-compute normalized column key map (una sola vez) ──
