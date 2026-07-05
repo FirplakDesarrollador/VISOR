@@ -41,7 +41,8 @@ const yieldUI = () => new Promise<void>((r) => setTimeout(r, 30));
 function parseExcelDate(serial: any): any {
     if (typeof serial !== "number") return serial;
     if (serial < 30000 || serial > 80000) return serial;
-    const utcDays = Math.floor(serial - 25569);
+    // Usamos Math.round para evitar que fechas como 46351.999 se trunquen al dia anterior
+    const utcDays = Math.round(serial - 25569);
     const date = new Date(utcDays * 86400 * 1000);
     const y = date.getUTCFullYear();
     const m = String(date.getUTCMonth() + 1).padStart(2, '0');

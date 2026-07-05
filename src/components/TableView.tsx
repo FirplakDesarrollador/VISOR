@@ -12,6 +12,16 @@ type SortConfig = {
     key: string;
     direction: 'asc' | 'desc' | null;
 };
+const formatDisplayDate = (d: string | null | undefined) => {
+    if (!d) return '';
+    const s = String(d).trim();
+    if (!s.includes('-')) return s;
+    const parts = s.split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return s;
+};
 
 // Componente de Fila Memoizado — COMPACTO
 const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => void }) => {
@@ -69,18 +79,18 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.estadoDespacho}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.transportador}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-700 border-r border-slate-200/50 font-mono tracking-wide truncate">{row.guia}</td>
-            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{row.fechaIngreso}</td>
-            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap bg-slate-50/30">{row.fechaProgDesp}</td>
-            <td className="px-2 py-1.5 text-[10px] font-black text-emerald-600 border-r border-slate-200/50 whitespace-nowrap">{row.fechaRealDespacho}</td>
-            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap">{row.fechaEstimada}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{formatDisplayDate(row.fechaIngreso)}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap bg-slate-50/30">{formatDisplayDate(row.fechaProgDesp)}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-emerald-600 border-r border-slate-200/50 whitespace-nowrap">{formatDisplayDate(row.fechaRealDespacho)}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap">{formatDisplayDate(row.fechaEstimada)}</td>
             <td className="px-2 py-1.5 text-[10px] font-black text-emerald-700 border-r border-slate-200/50 whitespace-nowrap">
                 <div className="flex items-center gap-1">
                     {row.isRealEntrega && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />}
-                    {row.fechaEntrega}
+                    {formatDisplayDate(row.fechaEntrega)}
                 </div>
             </td>
             <td className="px-2 py-1.5 text-[10px] font-black text-blue-800 bg-blue-50/50 border-r border-blue-100/50 font-mono tracking-wide">{row.factura}</td>
-            <td className="px-2 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50/50 whitespace-nowrap">{row.fechaFactura}</td>
+            <td className="px-2 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50/50 whitespace-nowrap">{formatDisplayDate(row.fechaFactura)}</td>
         </tr>
     );
 });

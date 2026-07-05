@@ -12,6 +12,16 @@ type SortConfig = {
     key: string;
     direction: 'asc' | 'desc' | null;
 };
+const formatDisplayDate = (d: string | null | undefined) => {
+    if (!d) return '';
+    const s = String(d).trim();
+    if (!s.includes('-')) return s;
+    const parts = s.split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return s;
+};
 
 const ExecutiveTableRow = memo(({ row, onClick }: { row: ExecutiveOrder; onClick: (ov: string) => void }) => {
     return (
@@ -44,7 +54,11 @@ const ExecutiveTableRow = memo(({ row, onClick }: { row: ExecutiveOrder; onClick
             <td className="px-2 py-2 text-[11px] font-black text-center text-blue-600 border-r border-slate-200/50 bg-blue-50/20">{row.pct_planificado.toFixed(1)}%</td>
             <td className="px-2 py-2 text-[10px] font-black text-right text-violet-800 border-r border-slate-200/50 bg-violet-50/30 whitespace-nowrap">{row.valor_total_pedido != null ? `$ ${row.valor_total_pedido.toLocaleString('en-US')}` : ''}</td>
             <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.estado_despacho}</td>
-            <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap bg-slate-50/30">{row.fecha_compromiso}</td>
+            <td className={`px-2 py-2 text-[10px] font-black border-r border-slate-200/50 whitespace-nowrap ${
+                row.atraso_dias && row.atraso_dias < 0 ? 'text-rose-600' : 'text-slate-600'
+            }`}>
+                {formatDisplayDate(row.fecha_compromiso)}
+            </td>
         </tr>
     );
 });
