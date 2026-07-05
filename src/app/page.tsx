@@ -786,15 +786,35 @@ export default function Home() {
         onClose={() => setIsLoginOpen(false)}
         onLogin={async (email, password) => {
           try {
-            const authPromise = supabase.auth.signInWithPassword({ email, password });
-            const timeoutPromise = new Promise((_, reject) => 
+            // Usamos fetch nativo para evitar bloqueos (deadlocks) del SDK de Supabase (Web Locks API)
+            const authPromise = fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+              method: 'POST',
+              headers: {
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ email, password })
+            }).then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data })));
+
+            const timeoutPromise = new Promise<any>((_, reject) => 
               setTimeout(() => reject(new Error('Timeout de conexión con el servidor. Verifica tu internet o red corporativa.')), 10000)
             );
             
-            const result = await Promise.race([authPromise, timeoutPromise]) as any;
+            const result = await Promise.race([authPromise, timeoutPromise]);
             
-            if (result.error) return false;
-            return !!result.data?.user;
+            if (!result.ok) {
+               throw new Error(result.data?.error_description || result.data?.msg || 'Credenciales inválidas');
+            }
+
+            // Si el fetch funciona, forzamos la sesión en el SDK
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: result.data.access_token,
+              refresh_token: result.data.refresh_token
+            });
+
+            if (sessionError) throw sessionError;
+            
+            return true;
           } catch (err: any) {
             console.error("Login falló o expiró:", err);
             throw err;
