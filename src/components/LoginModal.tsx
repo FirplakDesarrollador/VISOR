@@ -25,14 +25,13 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
             const success = await onLogin(email, password);
             if (success) {
                 onClose();
-                // Reset form
                 setEmail('');
                 setPassword('');
             } else {
                 setError('Usuario o contraseña incorrectos');
             }
-        } catch {
-            setError('Error al iniciar sesión');
+        } catch (err: any) {
+            setError(err.message || 'Error al iniciar sesión');
         } finally {
             setLoading(false);
         }

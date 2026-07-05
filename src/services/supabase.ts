@@ -15,10 +15,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: isBrowser,
     detectSessionInUrl: isBrowser,
     storageKey: 'firplak-auth-token',
-    flowType: 'pkce',
-    lock: isBrowser ? async (_name, _acquireTimeout, fn) => {
-      // Evitar bloqueos y timeouts del Navigator LockManager en desarrollo y refresco rápido (HMR)
-      return await fn();
-    } : undefined
+    flowType: 'pkce'
   }
 });

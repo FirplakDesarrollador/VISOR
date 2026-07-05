@@ -785,9 +785,20 @@ export default function Home() {
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
         onLogin={async (email, password) => {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error) return false;
-          return !!data.user;
+          try {
+            const authPromise = supabase.auth.signInWithPassword({ email, password });
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout de conexión con el servidor. Verifica tu internet o red corporativa.')), 10000)
+            );
+            
+            const result = await Promise.race([authPromise, timeoutPromise]) as any;
+            
+            if (result.error) return false;
+            return !!result.data?.user;
+          } catch (err: any) {
+            console.error("Login falló o expiró:", err);
+            throw err;
+          }
         }}
       />
 
