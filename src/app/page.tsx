@@ -97,80 +97,91 @@ export default function Home() {
     }
 
     //Consolidated Auth Check
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const userEmail = session.user.email || '';
-        
-        try {
-          const { data: dbUser } = await supabase
-            .from('Usuarios')
-            .select('Rol_Visor, nombres, apellidos, Vendedor_asignado')
-            .ilike('correo', userEmail.trim())
-            .maybeSingle();
+    let subscription: any;
+    try {
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        setTimeout(async () => {
+          if (session?.user) {
+            const userEmail = session.user.email || '';
+            
+            try {
+              const { data: dbUser } = await supabase
+                .from('Usuarios')
+                .select('Rol_Visor, nombres, apellidos, Vendedor_asignado')
+                .ilike('correo', userEmail.trim())
+                .maybeSingle();
 
-          const dbRole = dbUser?.Rol_Visor || '';
-          const rawVendedores = dbUser?.Vendedor_asignado || '';
-          const assignedVendors = rawVendedores.split(',')
-            .map((v: string) => v.trim())
-            .filter((v: string) => v !== '');
+              const dbRole = dbUser?.Rol_Visor || '';
+              const rawVendedores = dbUser?.Vendedor_asignado || '';
+              const assignedVendors = rawVendedores.split(',')
+                .map((v: string) => v.trim())
+                .filter((v: string) => v !== '');
 
-          const adminEmails = [
-            'mayerly.marin@firplak.com',
-            'ismael.correa@firplak.com',
-            'alejandro.isaza@firplak.com',
-          ];
+              const adminEmails = [
+                'mayerly.marin@firplak.com',
+                'ismael.correa@firplak.com',
+                'alejandro.isaza@firplak.com',
+              ];
 
-          const backofficeEmails = [
-              'ximena.ballestas@firplak.com',
-              'tatiana.duque@firplak.com',
-              'auxiliar.digitacion@firplak.com',
-              'luis.escobar@firplak.com',
-              'daniela.castro@firplak.com',
-              'juan.correa@firplak.com',
-              'marketplace@firplak.com',
-              'manuela.henao@firplak.com',
-              'servicios@firplak.com',
-              'servicios2@firplak.com',
-              'isabel.jaramillo@firplak.com',
-              'paula.guevara@firplak.com',
-              'analista2.desarrollo@firplak.com',
-            ];
+              const backofficeEmails = [
+                  'ximena.ballestas@firplak.com',
+                  'tatiana.duque@firplak.com',
+                  'auxiliar.digitacion@firplak.com',
+                  'luis.escobar@firplak.com',
+                  'daniela.castro@firplak.com',
+                  'juan.correa@firplak.com',
+                  'marketplace@firplak.com',
+                  'manuela.henao@firplak.com',
+                  'servicios@firplak.com',
+                  'servicios2@firplak.com',
+                  'isabel.jaramillo@firplak.com',
+                  'paula.guevara@firplak.com',
+                  'analista2.desarrollo@firplak.com',
+                ];
 
-          const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
-          let normalizedRole = 'Asesor';
-          
-          if (dbRole) {
-            normalizedRole = dbRole;
-          } else if (adminEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('admin')) {
-            normalizedRole = 'Administrador';
-          } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
-            normalizedRole = 'Backoffice';
+              const rawRole = (session.user.user_metadata?.role as string) || 'Asesor';
+              let normalizedRole = 'Asesor';
+              
+              if (dbRole) {
+                normalizedRole = dbRole;
+              } else if (adminEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('admin')) {
+                normalizedRole = 'Administrador';
+              } else if (backofficeEmails.includes(userEmail.toLowerCase()) || rawRole.toLowerCase().includes('back')) {
+                normalizedRole = 'Backoffice';
+              }
+
+              const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
+
+              const emailName = userEmail.split('@')[0]
+                .split('.')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+
+              setUser({
+                id: session.user.id,
+                email: userEmail,
+                name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || emailName,
+                role: normalizedRole,
+                assignedVendor: assignedVendors
+              });
+            } catch (error) {
+              console.error("Auth sync error:", error);
+            }
+          } else {
+            setUser(null);
           }
+          setIsSessionChecked(true); // Signal that initial check is done
+        }, 0);
+      });
+    subscription = data.subscription;
+    } catch (error) {
+      console.error("Auth state initialization error:", error);
+      setIsSessionChecked(true);
+    }
 
-          const fullName = dbUser ? `${dbUser.nombres || ''} ${dbUser.apellidos || ''}`.trim() : '';
-
-          const emailName = userEmail.split('@')[0]
-            .split('.')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-
-          setUser({
-            id: session.user.id,
-            email: userEmail,
-            name: fullName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || emailName,
-            role: normalizedRole,
-            assignedVendor: assignedVendors
-          });
-        } catch (error) {
-          console.error("Auth sync error:", error);
-        }
-      } else {
-        setUser(null);
-      }
-      setIsSessionChecked(true); // Signal that initial check is done
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, []);
 
   // --- TAB REDIRECT: Ensure dashboard access only for users ---
@@ -786,6 +797,9 @@ export default function Home() {
         onClose={() => setIsLoginOpen(false)}
         onLogin={async (email, password) => {
           try {
+            if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+              throw new Error('Configuración incompleta: Faltan las variables de conexión con la base de datos.');
+            }
             // Usamos fetch nativo para evitar bloqueos (deadlocks) del SDK de Supabase (Web Locks API)
             const authPromise = fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
               method: 'POST',
