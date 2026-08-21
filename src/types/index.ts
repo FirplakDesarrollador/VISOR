@@ -90,6 +90,7 @@ export interface OrderItem {
 
 export interface Order {
     oferta_venta?: string;
+    remision?: string;
     numero_orden_venta: string;
     numero_orden_compra?: string;
     tipo_orden_venta: string;
@@ -125,6 +126,7 @@ export interface Order {
 
 export interface ExecutiveOrder {
     oferta_venta?: string;
+    remision?: string;
     ov: string;
     oc?: string;
     cod_cliente?: string;

@@ -81,6 +81,7 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.transportador}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-700 border-r border-slate-200/50 font-mono tracking-wide truncate">{row.guia}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 whitespace-nowrap">{formatDisplayDate(row.fechaIngreso)}</td>
+            <td className="px-2 py-1.5 text-[10px] font-black text-amber-800 bg-amber-50/40 border-r border-amber-100/50 font-mono tracking-wide truncate">{row.remision}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap bg-slate-50/30">{formatDisplayDate(row.fechaProgDesp)}</td>
             <td className="px-2 py-1.5 text-[10px] font-black text-emerald-600 border-r border-slate-200/50 whitespace-nowrap">{formatDisplayDate(row.fechaRealDespacho)}</td>
             <td className="px-2 py-1.5 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap">{formatDisplayDate(row.fechaEstimada)}</td>
@@ -149,7 +150,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                 id: `${order.numero_orden_venta}-${index}`,
                 orderRef: order,
                 ofertaVenta: cleanStr(order.oferta_venta),
-                ov: cleanStr(order.numero_orden_venta),
+                ov: order.numero_orden_venta,
                 oc: cleanStr(order.numero_orden_compra),
                 itemIdx: index + 1,
                 cliente: cleanStr(order.nombre_cliente),
@@ -169,6 +170,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                          ? 'LISTO PARA RECOGER' 
                          : cleanStr(order.estado_orden)),
                 fechaIngreso: cleanStr(order.fecha_ingreso),
+                remision: cleanStr(item.remision || order.remision),
                 fechaProgDesp: cleanStr(order.fecha_plan_despacho),
                 fechaDespacho: cleanStr(order.fecha_plan_despacho),
                 // PER-ITEM: cada fila muestra SOLO sus propios datos de la BD
@@ -271,6 +273,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
         { key: 'transportador', label: 'Transportadora', width: '140px' },
         { key: 'guia', label: '# Guía', width: '110px' },
         { key: 'fechaIngreso', label: 'Fecha OV', width: '95px' },
+        { key: 'remision', label: 'Remisión', width: '100px' },
         { key: 'fechaProgDesp', label: 'Fecha Prog Desp', width: '105px' },
         { key: 'fechaRealDespacho', label: 'Fecha Desp', width: '95px' },
         { key: 'fechaEstimada', label: 'Fecha Estim', width: '95px' },
@@ -395,6 +398,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                             {/* Estado despacho — vacía */}
                             <td className="px-2 py-2 border-r border-white/10" />
                             {/* Columnas restantes vacías */}
+                            <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />

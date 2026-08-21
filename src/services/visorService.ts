@@ -390,9 +390,12 @@ export const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
         ]);
         const ofertaVal = rawOferta ? (formatOrderNumber(rawOferta) || cleanString(rawOferta)) : undefined;
 
+        const rawRemision = formatLargeNumber(getRawField(row, ["# Remisión", "REMISIÓN", "Remisión", "Remision", "# Remision", "Remisión #", "Remision #", "N° Remisión", "No. Remisión", "NUM REMISION", "Numero Remision", "# REMISIÓN"]));
+
         if (!ordersMap.has(ov)) {
             ordersMap.set(ov, {
                 oferta_venta: ofertaVal,
+                remision: rawRemision,
                 numero_orden_venta: ov,
                 numero_orden_compra: cleanString(getRawField(row, ["Orden de compra", "Orden de Compra", "ORDEN DE COMPRA", "OC"])),
                 tipo_orden_venta: getRawField(row, ["tipo orden de venta", "Tipo orden de venta", "Tipo Orden de Venta", "TIPO ORDEN DE VENTA"]) || '',
@@ -429,6 +432,11 @@ export const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
         // Update oferta_venta if found in any row
         if (ofertaVal && !order.oferta_venta) {
             order.oferta_venta = ofertaVal;
+        }
+
+        // Update remision if found in any row
+        if (rawRemision && !order.remision) {
+            order.remision = rawRemision;
         }
 
         // Update invoice info if found in any row
@@ -632,6 +640,7 @@ export const mapOrdersToExecutive = (orders: Order[]): ExecutiveOrder[] => {
 
         return {
             oferta_venta: order.oferta_venta,
+            remision: order.remision,
             ov: order.numero_orden_venta,
             oc: order.numero_orden_compra,
             cod_cliente: order.nit_cliente,

@@ -541,6 +541,7 @@ const isOrderAssignedToUser = (orderVendedorRaw: string | undefined, user: User 
         "ESTADO DESPACHO": item.estado_despacho || order.estado_despacho || '',
         "TRANSPORTADOR": item.transportador || order.transportador || '',
         "GUÍA": item.numero_guia || order.numero_guia || '',
+        "REMISIÓN": item.remision || order.remision || '',
         "FECHA OV": order.fecha_ingreso,
         "FECHA PROG DESP": item.fecha_plan_despacho || order.fecha_plan_despacho || '',
         "FECHA REAL DESP": item.fecha_real_despacho || '',

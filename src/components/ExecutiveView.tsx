@@ -55,6 +55,7 @@ const ExecutiveTableRow = memo(({ row, onClick }: { row: ExecutiveOrder; onClick
             <td className="px-2 py-2 text-[11px] font-black text-center text-blue-600 border-r border-slate-200/50 bg-blue-50/20">{row.pct_planificado.toFixed(1)}%</td>
             <td className="px-2 py-2 text-[10px] font-black text-right text-violet-800 border-r border-slate-200/50 bg-violet-50/30 whitespace-nowrap">{row.valor_total_pedido != null ? `$ ${row.valor_total_pedido.toLocaleString('en-US')}` : ''}</td>
             <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 truncate">{row.estado_despacho}</td>
+            <td className="px-2 py-2 text-[10px] font-black text-amber-800 bg-amber-50/40 border-r border-amber-100/50 font-mono tracking-wide truncate">{row.remision}</td>
             <td className="px-2 py-2 text-[10px] font-bold text-slate-600 border-r border-slate-200/50 whitespace-nowrap bg-slate-50/30">{formatDisplayDate(row.fecha_compromiso)}</td>
         </tr>
     );
@@ -135,6 +136,7 @@ export default function ExecutiveView({ orders, onOrderClick }: ExecutiveViewPro
         { key: 'pct_planificado', label: '% Planif', width: '70px' },
         { key: 'valor_total_pedido', label: 'Valor Total', width: '110px' },
         { key: 'estado_despacho', label: 'Estado despacho', width: '130px' },
+        { key: 'remision', label: 'Remisión', width: '100px' },
         { key: 'fecha_compromiso', label: 'Fecha Comp', width: '105px' }
     ];
 

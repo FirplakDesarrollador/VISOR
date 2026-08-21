@@ -211,6 +211,7 @@ export default function OrderDetail({ order, role, onBack }: OrderDetailProps) {
                                     <th className="w-16 px-2 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center bg-slate-100/30">Plan</th>
                                     <th className="w-24 px-4 py-3 text-[9px] font-black text-violet-600 uppercase tracking-widest text-right">Valor T.</th>
                                     <th className="w-24 px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Estado</th>
+                                    <th className="w-24 px-4 py-3 text-[9px] font-black text-amber-700 uppercase tracking-widest text-center">Remisión</th>
                                     <th className="w-24 px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Fecha Prog</th>
                                     <th className="w-24 px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Fecha Desp</th>
                                     <th className="w-24 px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Fecha Est</th>
@@ -266,6 +267,7 @@ export default function OrderDetail({ order, role, onBack }: OrderDetailProps) {
                                                     {item.estado_produccion || itemStatus}
                                                 </span>
                                             </td>
+                                            <td className="px-4 py-4 text-[10px] font-mono font-bold text-amber-800 text-center whitespace-nowrap">{item.remision || order.remision || '--'}</td>
                                             <td className="px-4 py-4 text-[10px] font-bold text-slate-600 text-center whitespace-nowrap">{item.fecha_plan_despacho || order.fecha_plan_despacho || '--'}</td>
                                             <td className="px-4 py-4 text-[10px] font-bold text-slate-600 text-center whitespace-nowrap">{item.fecha_real_despacho || '--'}</td>
                                             <td className="px-4 py-4 text-[10px] font-bold text-slate-600 text-center whitespace-nowrap">{item.fecha_estimada_entrega || '--'}</td>
