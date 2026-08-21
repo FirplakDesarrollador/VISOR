@@ -44,7 +44,7 @@ export default function Home() {
   // --- PERSISTENCE INITIALIZATION ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [filters, setFilters] = useState<SearchFilters>({
-    ov: '', oc: '', clientName: '', nit: ''
+    oferta: '', ov: '', oc: '', clientName: '', nit: ''
   });
   const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>('EnProceso');
   const [envioFilter, setEnvioFilter] = useState<string | null>(null);
@@ -226,20 +226,46 @@ export default function Home() {
     }
   }, [normalize]);
 
+  // 0. Role Filtered Orders
+  const roleFilteredOrders = useMemo(() => {
+    if (!user || user.role !== 'Vendedor') return allOrders;
+    const assigned = user.assignedVendor || [];
+    if (assigned.length === 0) return [];
+    
+    return allOrders.filter(order => {
+      const orderVendedor = (order.vendedor || '').toLowerCase();
+      return assigned.some(v => orderVendedor.includes(v.toLowerCase()));
+    });
+  }, [allOrders, user]);
+
+  const roleFilteredExecutiveOrders = useMemo(() => {
+    if (!user || user.role !== 'Vendedor') return executiveOrders;
+    const assigned = user.assignedVendor || [];
+    if (assigned.length === 0) return [];
+    
+    return executiveOrders.filter(order => {
+      const orderVendedor = (order.vendedor || '').toLowerCase();
+      return assigned.some(v => orderVendedor.includes(v.toLowerCase()));
+    });
+  }, [executiveOrders, user]);
+
   // 1. Searched Orders (Apply text filters only)
   const searchedOrders = useMemo(() => {
     if (!user) {
       // Public search logic
-      return allOrders.filter(order => {
+      return roleFilteredOrders.filter(order => {
+        const matchOferta = !filters.oferta || normalize(order.oferta_venta || '').includes(normalize(filters.oferta));
         const matchOV = !filters.ov || normalize(order.numero_orden_venta) === normalize(filters.ov);
         const matchOC = !filters.oc || normalize(order.numero_orden_compra || '') === normalize(filters.oc);
         const matchNIT = !filters.nit || (order.nit_cliente || '').trim() === filters.nit.trim();
-        return (filters.ov || filters.oc || filters.nit) && (matchOV && matchOC && matchNIT);
+        return (filters.oferta || filters.ov || filters.oc || filters.nit) && (matchOferta && matchOV && matchOC && matchNIT);
       });
     }
 
     // Backoffice search logic
-    return allOrders.filter(order => {
+    return roleFilteredOrders.filter(order => {
+      const oferta = normalize(order.oferta_venta || '');
+      const searchOferta = normalize(filters.oferta);
       const ov = normalize(order.numero_orden_venta);
       const searchOV = normalize(filters.ov);
       const oc = normalize(order.numero_orden_compra || '');
@@ -249,14 +275,15 @@ export default function Home() {
       const nit = (order.nit_cliente || '').trim();
       const searchNIT = (filters.nit || '').trim();
 
+      const matchOferta = !searchOferta || oferta.includes(searchOferta);
       const matchOV = !searchOV || ov.includes(searchOV);
       const matchOC = !searchOC || oc.includes(searchOC);
       const matchClient = !searchClient || client.includes(searchClient);
       const matchNIT = !searchNIT || nit.includes(searchNIT);
 
-      return matchOV && matchOC && matchClient && matchNIT;
+      return matchOferta && matchOV && matchOC && matchClient && matchNIT;
     });
-  }, [allOrders, filters, user, normalize]);
+  }, [roleFilteredOrders, filters, user, normalize]);
 
   // 2. Status Counts (Optimized: single pass over searched orders)
   const counts = useMemo(() => {
@@ -301,7 +328,9 @@ export default function Home() {
   const finalOrders = useMemo(() => {
     let result = searchedOrders;
 
-    if (user && activeStatusFilter) {
+    const hasActiveTextSearch = !!(filters.oferta || filters.ov || filters.oc || filters.clientName || filters.nit);
+
+    if (user && activeStatusFilter && !hasActiveTextSearch) {
       result = searchedOrders.map(order => {
         const filteredItems = order.items.filter(item => isItemInStatus(item, order, activeStatusFilter));
         if (filteredItems.length === 0) return null;
@@ -335,7 +364,9 @@ export default function Home() {
 
   // 4. Executive Orders Filtering (Apply text filters only, executive table has its own column filters)
   const finalExecutiveOrders = useMemo(() => {
-    return executiveOrders.filter(order => {
+    return roleFilteredExecutiveOrders.filter(order => {
+      const oferta = normalize(order.oferta_venta || '');
+      const searchOferta = normalize(filters.oferta);
       const ov = normalize(order.ov);
       const searchOV = normalize(filters.ov);
       const oc = normalize(order.oc || '');
@@ -345,14 +376,15 @@ export default function Home() {
       const nit = (order.cod_cliente || '').trim();
       const searchNIT = (filters.nit || '').trim();
 
+      const matchOferta = !searchOferta || oferta.includes(searchOferta);
       const matchOV = !searchOV || ov.includes(searchOV);
       const matchOC = !searchOC || oc.includes(searchOC);
       const matchClient = !searchClient || client.includes(searchClient);
       const matchNIT = !searchNIT || nit.includes(searchNIT);
 
-      return matchOV && matchOC && matchClient && matchNIT;
+      return matchOferta && matchOV && matchOC && matchClient && matchNIT;
     });
-  }, [executiveOrders, filters, normalize]);
+  }, [roleFilteredExecutiveOrders, filters, normalize]);
 
   // --- DATA FETCHING ---
   // Corre en paralelo con el check de IndexedDB.
@@ -404,14 +436,14 @@ export default function Home() {
 
   const rawStatuses = useMemo(() => {
     const statuses = new Set<string>();
-    allOrders.forEach(order => {
+    roleFilteredOrders.forEach(order => {
       order.items.forEach(item => {
         if (item.estado_raw) statuses.add(item.estado_raw);
       });
       if (order.estado_raw) statuses.add(order.estado_raw);
     });
     return Array.from(statuses).sort();
-  }, [allOrders]);
+  }, [roleFilteredOrders]);
 
   const handleSearch = async (newFilters: SearchFilters = filters, statusFilter: string | null = activeStatusFilter) => {
     setHasSearched(true);
@@ -421,7 +453,7 @@ export default function Home() {
 
     // Búsqueda en tiempo real desde la BD para usuarios no autenticados
     if (!user) {
-      if (!newFilters.ov && !newFilters.oc && !newFilters.nit) {
+      if (!newFilters.oferta && !newFilters.ov && !newFilters.oc && !newFilters.nit) {
         setAllOrders([]);
         return;
       }
@@ -451,6 +483,7 @@ export default function Home() {
     // 1. Preparar la data plana (aplanar órdenes con sus ítems)
     const exportData = finalOrders.flatMap(order => 
       order.items.map((item, index) => ({
+        "OFERTA DE VENTA": order.oferta_venta || '',
         "OV": order.numero_orden_venta,
         "OC": order.numero_orden_compra || '',
         "CÓD. CLIENTE": order.nit_cliente,
@@ -679,7 +712,7 @@ export default function Home() {
               onBack={() => setSelectedOrder(null)}
             />
           ) : activeTab === 'dashboard' ? (
-            <Dashboard orders={allOrders} />
+            <Dashboard orders={roleFilteredOrders} />
           ) : (
             <>
               <FilterBar
@@ -739,12 +772,12 @@ export default function Home() {
                       </>
                     )}
                   </div>
-                ) : user ? (
-                  viewMode === 'ejecutiva' ? (
+                ) : (
+                  viewMode === 'ejecutiva' && user ? (
                     <ExecutiveView 
                       orders={finalExecutiveOrders} 
                       onOrderClick={(ov) => {
-                        const matchedOrder = allOrders.find(o => o.numero_orden_venta === ov);
+                        const matchedOrder = roleFilteredOrders.find(o => o.numero_orden_venta === ov);
                         if (matchedOrder) {
                           setSelectedOrder(matchedOrder);
                         }
@@ -756,29 +789,6 @@ export default function Home() {
                       onOrderClick={setSelectedOrder} 
                     />
                   )
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-1">
-                      {finalOrders
-                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                        .map((order) => (
-                          <OrderCard
-                            key={order.numero_orden_venta}
-                            order={order}
-                            onClick={setSelectedOrder}
-                          />
-                        ))}
-                    </div>
-
-                    <div className="mt-12 flex justify-center">
-                      <Pagination
-                        currentPage={currentPage}
-                        totalItems={finalOrders.length}
-                        itemsPerPage={itemsPerPage}
-                        onPageChange={setCurrentPage}
-                      />
-                    </div>
-                  </>
                 )}
               </div>
             </>

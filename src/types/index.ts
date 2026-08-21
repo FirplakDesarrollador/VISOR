@@ -11,6 +11,10 @@ export interface User {
 export interface VisorRow {
     "Fecha de ingreso": string | null;
     "tipo orden de venta": string | null;
+    "Oferta de venta"?: string | number | null;
+    "oferta de venta"?: string | number | null;
+    "Oferta de Venta"?: string | number | null;
+    "Oferta"?: string | number | null;
     "Orden de venta": number | null;
     "Orden de compra": string | null;
     "vendedor": string | null;
@@ -85,6 +89,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+    oferta_venta?: string;
     numero_orden_venta: string;
     numero_orden_compra?: string;
     tipo_orden_venta: string;
@@ -119,6 +124,7 @@ export interface Order {
 }
 
 export interface ExecutiveOrder {
+    oferta_venta?: string;
     ov: string;
     oc?: string;
     cod_cliente?: string;

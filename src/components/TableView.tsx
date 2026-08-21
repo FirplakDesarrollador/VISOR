@@ -31,21 +31,22 @@ const TableRow = memo(({ row, onClick }: { row: any, onClick: (order: any) => vo
             className={`transition-all cursor-pointer group hover:shadow-inner ${row.colorRow}`}
             style={{ contentVisibility: 'auto', containIntrinsicSize: '0 36px' } as any}
         >
-            <td className="sticky left-0 z-10 px-2 py-1.5 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.ov}</td>
-            <td className="sticky left-[90px] z-10 px-2 py-1.5 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
-            <td className="sticky left-[170px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
-            <td className="sticky left-[290px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
+            <td className="sticky left-0 z-10 px-2 py-1.5 text-[11px] font-black text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.ofertaVenta}</td>
+            <td className="sticky left-[90px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.ov}</td>
+            <td className="sticky left-[180px] z-10 px-2 py-1.5 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
+            <td className="sticky left-[260px] z-10 px-2 py-1.5 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-inherit shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.nit}</td>
+            <td className="sticky left-[380px] z-10 px-2 py-1.5 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-inherit shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
             <td className="px-2 py-1.5 border-r border-slate-200/50 text-center truncate">
                 {row.envio ? (
                     <span 
                         title={row.componente ? `Componente: ${row.componente}` : undefined}
                         className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-sm ${
-                            row.componente?.toLowerCase().includes('kit') 
-                            ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                            row.envio.toLowerCase().includes('incompleto')
+                            ? 'bg-rose-100 text-rose-800 border-rose-300'
                             : row.envio.toLowerCase().includes('completo')
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                            : row.envio.toLowerCase().includes('incompleto')
-                            ? 'bg-rose-100 text-rose-800 border-rose-300'
+                            : row.componente?.toLowerCase().includes('kit') 
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
                             : 'bg-slate-50 text-slate-600 border-slate-200 shadow-none font-bold italic normal-case tracking-normal'
                         }`}
                     >
@@ -147,6 +148,7 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
             order.items.map((item, index) => ({
                 id: `${order.numero_orden_venta}-${index}`,
                 orderRef: order,
+                ofertaVenta: cleanStr(order.oferta_venta),
                 ov: cleanStr(order.numero_orden_venta),
                 oc: cleanStr(order.numero_orden_compra),
                 itemIdx: index + 1,
@@ -248,10 +250,11 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
 
     // Column definitions — COMPACTO
     const columns = [
-        { key: 'ov', label: 'OV', width: '90px', sticky: 'left-0', z: 'z-[30]' },
-        { key: 'oc', label: 'OC', width: '80px', sticky: 'left-[90px]', z: 'z-[30]' },
-        { key: 'nit', label: 'Cód. Cliente', width: '120px', sticky: 'left-[170px]', z: 'z-[30]' },
-        { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[290px]', z: 'z-[30]' },
+        { key: 'ofertaVenta', label: 'Oferta Venta', width: '90px', sticky: 'left-0', z: 'z-[30]' },
+        { key: 'ov', label: 'OV', width: '90px', sticky: 'left-[90px]', z: 'z-[30]' },
+        { key: 'oc', label: 'OC', width: '80px', sticky: 'left-[180px]', z: 'z-[30]' },
+        { key: 'nit', label: 'Cód. Cliente', width: '120px', sticky: 'left-[260px]', z: 'z-[30]' },
+        { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[380px]', z: 'z-[30]' },
         { key: 'envio', label: 'Envío', width: '100px' },
         { key: 'estado', label: 'Estado', width: '120px' },
         { key: 'vendedor', label: 'Vendedor', width: '110px' },
@@ -364,11 +367,12 @@ export default function TableView({ orders, onOrderClick }: TableViewProps) {
                         <tr className="bg-[#0A2A5C] text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
                             <td className="sticky left-0 z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
                             <td className="sticky left-[90px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
-                            <td className="sticky left-[170px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
-                            <td className="sticky left-[290px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10 shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)]">
+                            <td className="sticky left-[180px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
+                            <td className="sticky left-[260px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10" />
+                            <td className="sticky left-[380px] z-[30] bg-[#0A2A5C] px-2 py-2 border-r border-white/10 shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)]">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/60">TOTAL VALOR</span>
                             </td>
-                            {/* Columnas 5-13 vacías */}
+                            {/* Columnas 6-14 vacías */}
                             <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />
                             <td className="px-2 py-2 border-r border-white/10" />

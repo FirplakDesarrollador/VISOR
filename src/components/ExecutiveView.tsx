@@ -29,18 +29,19 @@ const ExecutiveTableRow = memo(({ row, onClick }: { row: ExecutiveOrder; onClick
             onClick={() => onClick(row.ov)}
             className="transition-all hover:bg-slate-50 border-b border-slate-100 cursor-pointer group"
         >
-            <td className="sticky left-0 z-10 px-2 py-2 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] group-hover:underline">{row.ov}</td>
-            <td className="sticky left-[90px] z-10 px-2 py-2 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
-            <td className="sticky left-[170px] z-10 px-2 py-2 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.cod_cliente}</td>
-            <td className="sticky left-[290px] z-10 px-2 py-2 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-white shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
+            <td className="sticky left-0 z-10 px-2 py-2 text-[11px] font-black text-slate-700 border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oferta_venta || ''}</td>
+            <td className="sticky left-[90px] z-10 px-2 py-2 text-[11px] font-black text-[#0078D4] border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] group-hover:underline">{row.ov}</td>
+            <td className="sticky left-[180px] z-10 px-2 py-2 text-[11px] font-extrabold text-slate-700 border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)]">{row.oc}</td>
+            <td className="sticky left-[260px] z-10 px-2 py-2 text-[10px] font-bold text-slate-500 border-r border-slate-200/50 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.02)] truncate">{row.cod_cliente}</td>
+            <td className="sticky left-[380px] z-10 px-2 py-2 text-[11px] font-black text-[#0F2942] border-r border-slate-200/80 bg-white shadow-[6px_0_10px_-4px_rgba(0,0,0,0.12)] truncate">{row.cliente}</td>
             <td className="px-2 py-2 border-r border-slate-200/50 text-center truncate">
                 {row.tipo_envio ? (
                     <span 
                         className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-sm ${
-                            row.tipo_envio.toLowerCase().includes('completo')
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                            : row.tipo_envio.toLowerCase().includes('incompleto')
+                            row.tipo_envio.toLowerCase().includes('incompleto')
                             ? 'bg-rose-100 text-rose-800 border-rose-300'
+                            : row.tipo_envio.toLowerCase().includes('completo')
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                             : 'bg-slate-50 text-slate-600 border-slate-200 shadow-none font-bold italic normal-case tracking-normal'
                         }`}
                     >
@@ -122,10 +123,11 @@ export default function ExecutiveView({ orders, onOrderClick }: ExecutiveViewPro
     };
 
     const columns = [
-        { key: 'ov', label: 'OV', width: '90px', sticky: 'left-0', z: 'z-[30]' },
-        { key: 'oc', label: 'OC', width: '80px', sticky: 'left-[90px]', z: 'z-[30]' },
-        { key: 'cod_cliente', label: 'Cód. Cliente', width: '120px', sticky: 'left-[170px]', z: 'z-[30]' },
-        { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[290px]', z: 'z-[30]' },
+        { key: 'oferta_venta', label: 'Oferta Venta', width: '90px', sticky: 'left-0', z: 'z-[30]' },
+        { key: 'ov', label: 'OV', width: '90px', sticky: 'left-[90px]', z: 'z-[30]' },
+        { key: 'oc', label: 'OC', width: '80px', sticky: 'left-[180px]', z: 'z-[30]' },
+        { key: 'cod_cliente', label: 'Cód. Cliente', width: '120px', sticky: 'left-[260px]', z: 'z-[30]' },
+        { key: 'cliente', label: 'Cliente', width: '220px', sticky: 'left-[380px]', z: 'z-[30]' },
         { key: 'tipo_envio', label: 'Tipo Envío', width: '100px' },
         { key: 'vendedor', label: 'Vendedor', width: '110px' },
         { key: 'pct_cedi', label: '% CEDI', width: '70px' },

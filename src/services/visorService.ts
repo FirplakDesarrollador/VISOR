@@ -46,6 +46,14 @@ const applyFilters = <T>(
     let q = (query as any).neq('Código del cliente', 'CN890927404-01');
 
     if (role === 'Externo') {
+        if (searchFilters?.oferta) {
+            const ofertaNum = parseInt(searchFilters.oferta, 10);
+            if (!isNaN(ofertaNum)) {
+                q = q.eq('Oferta de venta', ofertaNum);
+            } else {
+                q = q.ilike('Oferta de venta', `%${searchFilters.oferta.trim()}%`);
+            }
+        }
         if (searchFilters?.ov) {
             const ovNum = parseInt(searchFilters.ov, 10);
             if (!isNaN(ovNum)) {
@@ -294,9 +302,59 @@ const formatLargeNumber = (val: any): string | undefined => {
     return cleaned;
 };
 
+const normalizeKey = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+
+const getRawField = (row: Record<string, any>, candidateKeys: string[]): any => {
+    if (!row) return undefined;
+    
+    // 1. Direct exact match check
+    for (const key of candidateKeys) {
+        if (row[key] !== undefined && row[key] !== null) {
+            const strVal = String(row[key]).trim();
+            if (strVal !== '' && strVal.toLowerCase() !== 'null' && strVal.toLowerCase() !== 'undefined') {
+                return row[key];
+            }
+        }
+    }
+    
+    // 2. Normalized match check
+    const rowKeys = Object.keys(row);
+    if (rowKeys.length === 0) return undefined;
+    
+    const targetNorms = candidateKeys.map(normalizeKey);
+    for (const targetNorm of targetNorms) {
+        for (const rKey of rowKeys) {
+            if (normalizeKey(rKey) === targetNorm) {
+                const val = row[rKey];
+                if (val !== undefined && val !== null) {
+                    const strVal = String(val).trim();
+                    if (strVal !== '' && strVal.toLowerCase() !== 'null' && strVal.toLowerCase() !== 'undefined') {
+                        return val;
+                    }
+                }
+            }
+        }
+    }
+    
+    return undefined;
+};
+
+const formatOrderNumber = (val: any): string => {
+    if (val === undefined || val === null) return '';
+    let s = String(val).trim();
+    if (s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return '';
+    if (s.endsWith('.0')) {
+        s = s.slice(0, -2);
+    }
+    if (/^\d{1,3}(,\d{3})+$/.test(s)) {
+        s = s.replace(/,/g, '');
+    }
+    return s;
+};
+
 const isFleteOrFinanzas = (row: VisorRow): boolean => {
-    const desc = (row["Descripción del producto"] || '').toUpperCase();
-    const familia = (row["Familia"] || '').toUpperCase();
+    const desc = String(getRawField(row, ["Descripción del producto", "Descripcion del producto", "PRODUCTO", "Producto"]) || '').toUpperCase();
+    const familia = String(getRawField(row, ["Familia", "FAMILIA"]) || '').toUpperCase();
     return desc.includes('FLETE') || familia === 'FINANZAS';
 };
 
@@ -317,75 +375,72 @@ const isServiceItem = (item: { codigo_producto: string; descripcion_producto: st
 export const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
     const ordersMap = new Map<string, Order>();
 
-    // ── Pre-compute normalized column key map (una sola vez) ──
-    // Evita re-normalizar TODOS los keys de cada fila en cada llamada a getVal.
-    // Ahorro: de ~2.5 M operaciones de string a ~30 (una por columna).
-    const normalizeKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-    let colKeyMap: Map<string, string> | null = null;
-
     rows.forEach(row => {
-        // Ignorar registros de FLETES o FINANZAS completamente de la lógica logística
-        if (isFleteOrFinanzas(row)) return;
-
-        const ov = String(row["Orden de venta"] || '');
+        const ovVal = getRawField(row, ["Orden de venta", "Orden de Venta", "ORDEN DE VENTA", "Orden Venta", "OV", "N° OV", "No. OV", "# OV"]);
+        const ov = formatOrderNumber(ovVal);
         if (!ov) return;
 
-        // Ignorar registros de mala gestión (cerrados que siguen pendientes en base de datos)
-        const estadoRaw = (row["Estado"] || '').toLowerCase().trim();
-        const estadoOrden = (row["Estado de la orden"] || row["Estado de la Orden"] || '').toLowerCase().trim();
-        if (estadoRaw === 'cerrado' && estadoOrden === 'pendiente') return;
+        const rawOferta = getRawField(row, [
+            "Oferta de venta", "Oferta de Venta", "oferta de venta", "OFERTA DE VENTA",
+            "Oferta Venta", "OFERTA VENTA", "Oferta", "OFERTA", "Oferta vta", "Oferta de vta",
+            "OFERTA VTA", "OFERTA DE VTA", "Cotizacion", "Cotización", "COTIZACION", "COTIZACIÓN",
+            "Doc. Base", "Doc Base", "Documento Base", "Documento base", "DOCUMENTO BASE",
+            "# Oferta", "No. Oferta", "N° Oferta", "Num Oferta", "Numero Oferta", "Número Oferta",
+            "N° Oferta Venta", "No. Oferta Venta", "Oferta #", "Oferta No", "OfertaVenta",
+            "Oferta_Venta", "oferta_venta", "Nº oferta", "Nº Oferta"
+        ]);
+        const ofertaVal = rawOferta ? (formatOrderNumber(rawOferta) || cleanString(rawOferta)) : undefined;
 
         if (!ordersMap.has(ov)) {
             ordersMap.set(ov, {
+                oferta_venta: ofertaVal,
                 numero_orden_venta: ov,
-                numero_orden_compra: row["Orden de compra"] || undefined,
-                tipo_orden_venta: row["tipo orden de venta"] || '',
-                ciudad_destino: row["Destino"] || '',
-                fecha_ingreso: row["Fecha de ingreso"] || '',
-                fecha_plan_despacho: row["Fecha de despacho"] || '',
-                fecha_real_despacho: row["Fecha real de despacho"] || undefined,
-                estado_orden: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
+                numero_orden_compra: cleanString(getRawField(row, ["Orden de compra", "Orden de Compra", "ORDEN DE COMPRA", "OC"])),
+                tipo_orden_venta: getRawField(row, ["tipo orden de venta", "Tipo orden de venta", "Tipo Orden de Venta", "TIPO ORDEN DE VENTA"]) || '',
+                ciudad_destino: getRawField(row, ["Destino", "DESTINO", "Ciudad", "CIUDAD"]) || '',
+                fecha_ingreso: getRawField(row, ["Fecha de ingreso", "FECHA DE INGRESO", "FECHA OV", "Fecha OV"]) || '',
+                fecha_plan_despacho: getRawField(row, ["Fecha de despacho", "FECHA DE DESPACHO", "FECHA PROG DESP", "Fecha Prog Desp"]) || '',
+                fecha_real_despacho: cleanString(getRawField(row, ["Fecha real de despacho", "FECHA REAL DESPACHO", "FECHA REAL DESP"])),
+                estado_orden: normalizeOrderState(getRawField(row, ["Estado de la orden", "Estado de la Orden", "ESTADO DE LA ORDEN", "ESTADO", "Estado"])),
                 items: [],
                 total_pedida: 0,
                 total_facturada: 0,
                 total_despacho: 0,
                 total_produccion: 0,
                 total_planificada: 0,
-                nombre_cliente: row["Nombre del cliente"] || '',
-                nit_cliente: row["Código del cliente"] || '',
-                nombre_sala: row["Nombre de la sala"] || undefined,
-                vendedor: cleanString(row["vendedor"]),
-                transportador: cleanString(row["Transportador"]),
-                numero_guia: formatLargeNumber(row["# GUIA"]),
-                fecha_estimada_entrega: cleanString(row["Fecha estimada de entrega (real)"]) || cleanString(row["Fecha estimada de entrega"]),
-                fecha_entrega: cleanString(row["Fecha de entrega"]),
-                numero_factura: formatLargeNumber(row["# Factura"]),
-                fecha_factura: cleanString(row["Fecha de la factura"]),
-                envio: cleanString(row["envio"] || row["Envio"] || row["envío"] || row["Envío"]),
-                estado_despacho: cleanString(row["Estado despacho"]),
-                estado_raw: cleanString(row["Estado"]),
-                normalizedStatus: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
+                nombre_cliente: getRawField(row, ["Nombre del cliente", "NOMBRE DEL CLIENTE", "CLIENTE", "Cliente"]) || '',
+                nit_cliente: getRawField(row, ["Código del cliente", "Codigo del cliente", "CÓD. CLIENTE", "COD. CLIENTE", "COD CLIENTE", "NIT", "Nit"]) || '',
+                nombre_sala: getRawField(row, ["Nombre de la sala", "NOMBRE DE LA SALA", "SALA / PROYECTO", "SALA", "Proyecto"]) || undefined,
+                vendedor: cleanString(getRawField(row, ["vendedor", "Vendedor", "VENDEDOR", "Asesor"])),
+                transportador: cleanString(getRawField(row, ["Transportador", "TRANSPORTADOR", "Transportadora", "TRANSPORTADORA"])),
+                numero_guia: formatLargeNumber(getRawField(row, ["# GUIA", "GUÍA", "Guía", "Guia", "GUIA", "# Guía"])),
+                fecha_estimada_entrega: cleanString(getRawField(row, ["Fecha estimada de entrega (real)", "Fecha estimada de entrega", "FECHA ESTIMADA"])),
+                fecha_entrega: cleanString(getRawField(row, ["Fecha de entrega", "FECHA ENTREGA", "Fecha Entrega"])),
+                numero_factura: formatLargeNumber(getRawField(row, ["# Factura", "FACTURA", "Factura", "# FACTURA"])),
+                fecha_factura: cleanString(getRawField(row, ["Fecha de la factura", "FECHA FACTURA", "Fecha Factura", "FECHA FACT"])),
+                envio: cleanString(getRawField(row, ["envio", "Envio", "envío", "Envío", "ENVÍO", "ENVIO"])),
+                estado_despacho: cleanString(getRawField(row, ["Estado despacho", "ESTADO DESPACHO"])),
+                estado_raw: cleanString(getRawField(row, ["Estado", "ESTADO"])),
+                normalizedStatus: normalizeOrderState(getRawField(row, ["Estado de la orden", "Estado de la Orden", "ESTADO DE LA ORDEN", "ESTADO", "Estado"])),
             });
         }
 
         const order = ordersMap.get(ov)!;
 
-        // Update invoice info if found in any row
-        if (row["# Factura"] && !order.numero_factura) order.numero_factura = formatLargeNumber(row["# Factura"]);
-        if (row["Fecha de la factura"] && !order.fecha_factura) order.fecha_factura = row["Fecha de la factura"];
-
-        // Construir el mapa de claves UNA sola vez (todas las filas tienen las mismas columnas)
-        if (!colKeyMap) {
-            colKeyMap = new Map();
-            for (const key of Object.keys(row)) {
-                colKeyMap.set(normalizeKey(key), key);
-            }
+        // Update oferta_venta if found in any row
+        if (ofertaVal && !order.oferta_venta) {
+            order.oferta_venta = ofertaVal;
         }
 
-        const getVal = (searchKey: string) => {
-            const actualKey = colKeyMap!.get(normalizeKey(searchKey));
-            const val = actualKey ? (row as any)[actualKey] : null;
+        // Update invoice info if found in any row
+        const rowFactura = formatLargeNumber(getRawField(row, ["# Factura", "FACTURA", "Factura", "# FACTURA"]));
+        if (rowFactura && !order.numero_factura) order.numero_factura = rowFactura;
+        
+        const rowFechaFactura = getRawField(row, ["Fecha de la factura", "FECHA FACTURA", "Fecha Factura", "FECHA FACT"]);
+        if (rowFechaFactura && !order.fecha_factura) order.fecha_factura = String(rowFechaFactura);
 
+        const getValNum = (searchKeys: string[]) => {
+            const val = getRawField(row, searchKeys);
             if (val !== undefined && val !== null && String(val).toLowerCase() !== 'null' && String(val).trim() !== '') {
                 const num = parseFloat(String(val).replace(/,/g, ''));
                 return isNaN(num) ? 0 : num;
@@ -393,11 +448,11 @@ export const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
             return 0;
         };
 
-        const cantPedida = getVal("cantidad pedida");
-        const cantFacturada = getVal("cantidad facturada");
-        const cantDespacho = getVal("cant ent despacho");
-        const cantProduccion = getVal("cant proc");
-        const cantPlanificado = getVal("cant planif");
+        const cantPedida = getValNum(["Cantidad pedida", "cantidad pedida", "CANTIDAD PEDIDA", "PED", "Cantidad"]);
+        const cantFacturada = getValNum(["cantidad facturada", "Cantidad facturada", "CANTIDAD FACTURADA", "FAC"]);
+        const cantDespacho = getValNum(["cant - ent - despacho", "cant ent despacho", "CANT ENT DESPACHO", "DESP", "DESPACHO"]);
+        const cantProduccion = getValNum(["cant proc", "CANT PROC", "PROD", "PRODUCCION"]);
+        const cantPlanificado = getValNum(["cant planif", "CANT PLANIF", "PLAN"]);
 
         order.total_pedida += cantPedida;
         order.total_facturada += cantFacturada;
@@ -405,55 +460,56 @@ export const groupRowsIntoOrders = (rows: VisorRow[]): Order[] => {
         order.total_produccion += cantProduccion;
         order.total_planificada += cantPlanificado;
 
+        const situacionStr = String(getRawField(row, ["situación item", "situacion item", "SITUACIÓN ITEM", "SITUACIÓN"]) || '').toLowerCase();
         const isCompleto = (cantPedida > 0 && cantPedida === (cantFacturada + cantDespacho)) || 
-                           (String(row["situación item"] || '').toLowerCase().includes('disponible para despachar') && cantPedida === (cantFacturada + cantDespacho));
+                           (situacionStr.includes('disponible para despachar') && cantPedida === (cantFacturada + cantDespacho));
 
         order.items.push({
-            codigo_producto: row["Código del producto"] || '',
-            descripcion_producto: row["Descripción del producto"] || '',
-            familia: row["Familia"] || undefined,
+            codigo_producto: getRawField(row, ["Código del producto", "Codigo del producto", "CÓD. PRODUCTO", "COD. PRODUCTO", "COD PRODUCTO"]) || '',
+            descripcion_producto: getRawField(row, ["Descripción del producto", "Descripcion del producto", "DESCRIPCIÓN DEL PRODUCTO", "PRODUCTO", "Producto"]) || '',
+            familia: getRawField(row, ["Familia", "FAMILIA"]) || undefined,
             cantidad_pedida: cantPedida,
             cantidad_facturada: cantFacturada,
             cantidad_despacho: cantDespacho,
             cantidad_produccion: cantProduccion,
             cantidad_planificada: cantPlanificado,
             precio_unitario: (() => {
-                const v = cleanString(row["Precio por unidad"]);
+                const v = cleanString(getRawField(row, ["Precio por unidad", "PRECIO POR UNIDAD", "VALOR UNITARIO", "Precio Unitario", "Precio U."]));
                 if (!v) return undefined;
                 const n = parseFloat(v.replace(/,/g, ''));
                 return isNaN(n) ? undefined : n;
             })(),
             valor_total: (() => {
-                const v = cleanString(row["Valor total"]);
+                const v = cleanString(getRawField(row, ["Valor total", "VALOR TOTAL", "Valor Total"]));
                 if (!v) return undefined;
                 const n = parseFloat(v.replace(/,/g, ''));
                 return isNaN(n) ? undefined : n;
             })(),
             estado_produccion: isCompleto ? 'Completo' :
-                              cantFacturada >= cantPedida && cantPedida > 0 ? 'Entregada' :
-                              cantProduccion > 0 ? 'En Producción' : 'Pendiente',
-            componente: row["Componente"] || undefined,
-            situacion_item: row["situación item"] || undefined,
-            envio: row["envio"] || row["Envio"] || row["envío"] || row["Envío"] || undefined,
-            estado_orden: normalizeOrderState(row["Estado de la orden"] || row["Estado de la Orden"]),
-            numero_guia: formatLargeNumber(row["# GUIA"]),
-            transportador: cleanString(row["Transportador"]),
-            estado_raw: cleanString(row["Estado"]),
+                               cantFacturada >= cantPedida && cantPedida > 0 ? 'Entregada' :
+                               cantProduccion > 0 ? 'En Producción' : 'Pendiente',
+            componente: getRawField(row, ["Componente", "COMPONENTE"]) || undefined,
+            situacion_item: getRawField(row, ["situación item", "situacion item", "SITUACIÓN ITEM", "SITUACIÓN"]) || undefined,
+            envio: cleanString(getRawField(row, ["envio", "Envio", "envío", "Envío", "ENVÍO", "ENVIO"])),
+            estado_orden: normalizeOrderState(getRawField(row, ["Estado de la orden", "Estado de la Orden", "ESTADO DE LA ORDEN", "ESTADO", "Estado"])),
+            numero_guia: formatLargeNumber(getRawField(row, ["# GUIA", "GUÍA", "Guía", "Guia", "GUIA", "# Guía"])),
+            transportador: cleanString(getRawField(row, ["Transportador", "TRANSPORTADOR", "Transportadora", "TRANSPORTADORA"])),
+            estado_raw: cleanString(getRawField(row, ["Estado", "ESTADO"])),
             // Per-item row data — preserva integridad de cada fila de la BD
-            remision: cleanString(row["# Remisión"]),
-            fecha_real_despacho: cleanString(row["Fecha real de despacho"] || (row as any)["Fecha real despacho"]),
-            fecha_plan_despacho: cleanString(row["Fecha de despacho"] || (row as any)["Fecha despacho"] || (row as any)["Fecha Prog Desp"]),
-            fecha_entrega: cleanString(row["Fecha de entrega"]),
-            numero_factura: formatLargeNumber(row["# Factura"]),
-            fecha_factura: cleanString(row["Fecha de la factura"]),
-            estado_despacho: cleanString(row["Estado despacho"]),
-            fecha_estimada_entrega: cleanString(row["Fecha estimada de entrega (real)"]) || cleanString(row["Fecha estimada de entrega"]),
+            remision: cleanString(getRawField(row, ["# Remisión", "REMISIÓN", "Remisión", "Remision"])),
+            fecha_real_despacho: cleanString(getRawField(row, ["Fecha real de despacho", "FECHA REAL DESPACHO", "FECHA REAL DESP"])),
+            fecha_plan_despacho: cleanString(getRawField(row, ["Fecha de despacho", "FECHA DE DESPACHO", "FECHA PROG DESP", "Fecha Prog Desp"])),
+            fecha_entrega: cleanString(getRawField(row, ["Fecha de entrega", "FECHA ENTREGA", "Fecha Entrega"])),
+            numero_factura: formatLargeNumber(getRawField(row, ["# Factura", "FACTURA", "Factura", "# FACTURA"])),
+            fecha_factura: cleanString(getRawField(row, ["Fecha de la factura", "FECHA FACTURA", "Fecha Factura", "FECHA FACT"])),
+            estado_despacho: cleanString(getRawField(row, ["Estado despacho", "ESTADO DESPACHO"])),
+            fecha_estimada_entrega: cleanString(getRawField(row, ["Fecha estimada de entrega (real)", "Fecha estimada de entrega", "FECHA ESTIMADA"])),
         });
 
-        // Hipótesis 3: Si un ítem ya tiene guía pero la orden no, actualizarla
-        if (row["# GUIA"] && !order.numero_guia) {
-            order.numero_guia = formatLargeNumber(row["# GUIA"]);
-            order.transportador = row["Transportador"] || order.transportador;
+        const rowGuia = formatLargeNumber(getRawField(row, ["# GUIA", "GUÍA", "Guía", "Guia", "GUIA", "# Guía"]));
+        if (rowGuia && !order.numero_guia) {
+            order.numero_guia = rowGuia;
+            order.transportador = cleanString(getRawField(row, ["Transportador", "TRANSPORTADOR", "Transportadora", "TRANSPORTADORA"])) || order.transportador;
         }
     });
 
@@ -576,6 +632,7 @@ export const mapOrdersToExecutive = (orders: Order[]): ExecutiveOrder[] => {
         }
 
         return {
+            oferta_venta: order.oferta_venta,
             ov: order.numero_orden_venta,
             oc: order.numero_orden_compra,
             cod_cliente: order.nit_cliente,

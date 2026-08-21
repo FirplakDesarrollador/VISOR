@@ -79,7 +79,10 @@ const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardProps) {
                             {formatValue(order.numero_orden_venta)}
                         </h3>
                     </div>
-                    <div className="flex items-center gap-2 mt-1 text-slate-400 font-bold text-[9px] uppercase tracking-wider">
+                    <div className="flex items-center gap-2 mt-1 text-slate-400 font-bold text-[9px] uppercase tracking-wider flex-wrap">
+                        {order.oferta_venta && (
+                            <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">Oferta: {formatValue(order.oferta_venta)}</span>
+                        )}
                         <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">OC: {formatValue(order.numero_orden_compra)}</span>
                     </div>
                 </div>

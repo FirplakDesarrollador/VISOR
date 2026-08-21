@@ -3,6 +3,7 @@
 import { User } from '@/types';
 
 export interface SearchFilters {
+    oferta: string;
     ov: string;
     oc: string;
     clientName: string;
@@ -236,6 +237,7 @@ export default function FilterBar({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 {[
+                    { id: 'oferta',     label: 'Oferta',  placeholder: 'Ej: 5001' },
                     { id: 'ov',         label: 'OV',      placeholder: 'Ej: 1001' },
                     { id: 'oc',         label: 'OC',      placeholder: 'Ej: 2234' },
                     { id: 'clientName', label: 'Cliente', placeholder: 'Nombre' },
