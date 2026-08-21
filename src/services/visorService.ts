@@ -54,6 +54,14 @@ const applyFilters = <T>(
                 q = q.ilike('Oferta de venta', `%${searchFilters.oferta.trim()}%`);
             }
         }
+        if (searchFilters?.remision) {
+            const remisionNum = parseInt(searchFilters.remision, 10);
+            if (!isNaN(remisionNum)) {
+                q = q.eq('# Remisión', remisionNum);
+            } else {
+                q = q.ilike('# Remisión', `%${searchFilters.remision.trim()}%`);
+            }
+        }
         if (searchFilters?.ov) {
             const ovNum = parseInt(searchFilters.ov, 10);
             if (!isNaN(ovNum)) {

@@ -44,7 +44,7 @@ export default function Home() {
   // --- PERSISTENCE INITIALIZATION ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [filters, setFilters] = useState<SearchFilters>({
-    oferta: '', ov: '', oc: '', clientName: '', nit: ''
+    oferta: '', remision: '', ov: '', oc: '', clientName: '', nit: ''
   });
   const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>('EnProceso');
   const [envioFilter, setEnvioFilter] = useState<string | null>(null);
@@ -289,10 +289,11 @@ const isOrderAssignedToUser = (orderVendedorRaw: string | undefined, user: User 
       // Public search logic
       return roleFilteredOrders.filter(order => {
         const matchOferta = !filters.oferta || normalize(order.oferta_venta || '').includes(normalize(filters.oferta));
+        const matchRemision = !filters.remision || normalize(order.remision || '').includes(normalize(filters.remision)) || order.items.some(i => normalize(i.remision || '').includes(normalize(filters.remision)));
         const matchOV = !filters.ov || normalize(order.numero_orden_venta) === normalize(filters.ov);
         const matchOC = !filters.oc || normalize(order.numero_orden_compra || '') === normalize(filters.oc);
         const matchNIT = !filters.nit || (order.nit_cliente || '').trim() === filters.nit.trim();
-        return (filters.oferta || filters.ov || filters.oc || filters.nit) && (matchOferta && matchOV && matchOC && matchNIT);
+        return (filters.oferta || filters.remision || filters.ov || filters.oc || filters.nit) && (matchOferta && matchRemision && matchOV && matchOC && matchNIT);
       });
     }
 
@@ -300,6 +301,8 @@ const isOrderAssignedToUser = (orderVendedorRaw: string | undefined, user: User 
     return roleFilteredOrders.filter(order => {
       const oferta = normalize(order.oferta_venta || '');
       const searchOferta = normalize(filters.oferta);
+      const remision = normalize(order.remision || '');
+      const searchRemision = normalize(filters.remision);
       const ov = normalize(order.numero_orden_venta);
       const searchOV = normalize(filters.ov);
       const oc = normalize(order.numero_orden_compra || '');
@@ -310,12 +313,13 @@ const isOrderAssignedToUser = (orderVendedorRaw: string | undefined, user: User 
       const searchNIT = (filters.nit || '').trim();
 
       const matchOferta = !searchOferta || oferta.includes(searchOferta);
+      const matchRemision = !searchRemision || remision.includes(searchRemision) || order.items.some(i => normalize(i.remision || '').includes(searchRemision));
       const matchOV = !searchOV || ov.includes(searchOV);
       const matchOC = !searchOC || oc.includes(searchOC);
       const matchClient = !searchClient || client.includes(searchClient);
       const matchNIT = !searchNIT || nit.includes(searchNIT);
 
-      return matchOferta && matchOV && matchOC && matchClient && matchNIT;
+      return matchOferta && matchRemision && matchOV && matchOC && matchClient && matchNIT;
     });
   }, [roleFilteredOrders, filters, user, normalize]);
 
@@ -362,7 +366,7 @@ const isOrderAssignedToUser = (orderVendedorRaw: string | undefined, user: User 
   const finalOrders = useMemo(() => {
     let result = searchedOrders;
 
-    const hasActiveTextSearch = !!(filters.oferta || filters.ov || filters.oc || filters.clientName || filters.nit);
+    const hasActiveTextSearch = !!(filters.oferta || filters.remision || filters.ov || filters.oc || filters.clientName || filters.nit);
 
     if (user && activeStatusFilter && !hasActiveTextSearch) {
       result = searchedOrders.map(order => {

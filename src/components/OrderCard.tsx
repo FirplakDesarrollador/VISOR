@@ -83,6 +83,9 @@ const OrderCard = memo(function OrderCard({ order, onClick }: OrderCardProps) {
                         {order.oferta_venta && (
                             <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">Oferta: {formatValue(order.oferta_venta)}</span>
                         )}
+                        {order.remision && (
+                            <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-100 rounded-md font-mono">Remisión: {formatValue(order.remision)}</span>
+                        )}
                         <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded-md">OC: {formatValue(order.numero_orden_compra)}</span>
                     </div>
                 </div>
