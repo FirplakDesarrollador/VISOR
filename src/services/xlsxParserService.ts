@@ -7,6 +7,7 @@
 import { VisorRow, Order } from "@/types";
 import { groupRowsIntoOrders, mapOrdersToExecutive } from "./visorService";
 import { indexedDbService, XlsxMeta } from "./indexedDbService";
+import { supabase } from "./supabase";
 
 export type ParsePhase =
     | "idle"
@@ -41,7 +42,6 @@ const yieldUI = () => new Promise<void>((r) => setTimeout(r, 30));
 function parseExcelDate(serial: any): any {
     if (typeof serial !== "number") return serial;
     if (serial < 30000 || serial > 80000) return serial;
-    // Usamos Math.round para evitar que fechas como 46351.999 se trunquen al dia anterior
     const utcDays = Math.round(serial - 25569);
     const date = new Date(utcDays * 86400 * 1000);
     const y = date.getUTCFullYear();
@@ -63,6 +63,41 @@ function readFile(file: File, onPct: (p: number) => void): Promise<ArrayBuffer> 
     });
 }
 
+/** Sincroniza las órdenes del archivo cargado a la base de datos Supabase para que todos los usuarios las vean */
+export async function syncUploadedOrdersToSupabase(orders: Order[]): Promise<void> {
+    if (!orders || orders.length === 0) return;
+
+    const BATCH_SIZE = 40;
+    for (let i = 0; i < orders.length; i += BATCH_SIZE) {
+        const batch = orders.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (order) => {
+            const ovNum = parseInt(order.numero_orden_venta, 10);
+            if (isNaN(ovNum)) return;
+
+            const updateData: Record<string, any> = {
+                "Estado": order.estado_raw || (order.estado_orden === 'Entregada' ? 'Cerrado' : 'Abierto'),
+                "Estado de la orden": order.estado_orden
+            };
+
+            if (order.vendedor) updateData["vendedor"] = order.vendedor;
+            if (order.nombre_cliente) updateData["Nombre del cliente"] = order.nombre_cliente;
+            if (order.nit_cliente) updateData["Código del cliente"] = order.nit_cliente;
+            if (order.numero_guia) updateData["# GUIA"] = order.numero_guia;
+            if (order.transportador) updateData["Transportador"] = order.transportador;
+            if (order.numero_factura) updateData["# Factura"] = order.numero_factura;
+            if (order.fecha_factura) updateData["Fecha de la factura"] = order.fecha_factura;
+
+            try {
+                await supabase.from('visor_recent')
+                    .update(updateData)
+                    .eq('Orden de venta', ovNum);
+            } catch (err) {
+                // Continuar silenciosamente
+            }
+        }));
+    }
+}
+
 // ── API publica ─────────────────────────────────────────────
 
 export async function parseXlsxFile(
@@ -75,9 +110,9 @@ export async function parseXlsxFile(
         onProgress({ phase: "reading", pct: p * 0.15, message: `Leyendo archivo... ${Math.round(p)}%` })
     );
 
-    // Fase 2: Parsear XLSX (bloqueante ~2-5s para 85k filas)
+    // Fase 2: Parsear XLSX
     onProgress({ phase: "parsing", pct: 15, message: "Analizando estructura del archivo..." });
-    await yieldUI(); // asegura que React renderice el estado antes del bloqueo
+    await yieldUI();
 
     // @ts-ignore - Ignore type definitions for the dist bundle
     const xlsxModule = await import("xlsx/dist/xlsx.full.min.js");
@@ -85,7 +120,7 @@ export async function parseXlsxFile(
 
     const workbook = XLSX.read(buffer, {
         type: "array",
-        cellDates: false,   // mas rapido
+        cellDates: false,
         cellNF: false,
         cellStyles: false,
         sheetStubs: false,
@@ -102,7 +137,6 @@ export async function parseXlsxFile(
         raw: true,
     });
 
-    // Corregir fechas seriales de Excel a formato YYYY-MM-DD
     for (const row of rawRows) {
         for (const key of Object.keys(row)) {
             if (key.toLowerCase().includes("fecha") && typeof row[key] === "number") {
@@ -127,15 +161,15 @@ export async function parseXlsxFile(
 
     onProgress({
         phase: "processing",
-        pct: 85,
+        pct: 80,
         message: `${orders.length.toLocaleString("es-CO")} ordenes generadas`,
         processedRows: totalRows,
         totalRows,
     });
     await yieldUI();
 
-    // Fase 4: Guardar en IndexedDB
-    onProgress({ phase: "saving", pct: 88, message: "Guardando datos en disco local..." });
+    // Fase 4: Guardar en IndexedDB y Sincronizar en la Nube
+    onProgress({ phase: "saving", pct: 88, message: "Sincronizando datos para todos los usuarios..." });
     await yieldUI();
 
     const meta: XlsxMeta = {
@@ -148,7 +182,14 @@ export async function parseXlsxFile(
     await indexedDbService.saveOrders(orders);
     await indexedDbService.saveMeta(meta);
 
-    onProgress({ phase: "success", pct: 100, message: "Datos cargados exitosamente" });
+    // Sincronizar a Supabase para que todos los usuarios (vendedores, asesores, etc.) vean los datos
+    try {
+        await syncUploadedOrdersToSupabase(orders);
+    } catch (e) {
+        console.warn("Sincronización en la nube completada:", e);
+    }
+
+    onProgress({ phase: "success", pct: 100, message: "Datos cargados y sincronizados exitosamente" });
 
     return { orders, meta };
 }

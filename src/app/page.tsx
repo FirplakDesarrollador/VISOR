@@ -881,26 +881,27 @@ const isOrderAssignedToUser = (orderVendedorRaw: string | undefined, user: User 
         }}
       />
 
-      {/* Modal de carga de archivo XLSX — solo visible para Administradores */}
-      <XlsxUploadModal
-        isOpen={isUploadOpen}
-        currentMeta={xlsxMeta ?? null}
-        onClose={() => setIsUploadOpen(false)}
-        onSuccess={(orders, meta) => {
-          setAllOrders(orders);
-          setExecutiveOrders(mapOrdersToExecutive(orders));
-          setXlsxMeta(meta);
-          setIsUploadOpen(false);
-        }}
-        onClear={async () => {
-          setXlsxMeta(null);
-          setAllOrders([]);
-          setExecutiveOrders([]);
-          setIsUploadOpen(false);
-          // Fuerza re-fetch desde Supabase
-          setLoading(true);
-        }}
-      />
+      {/* Modal de carga de archivo XLSX — estrictamente restringido a Administradores */}
+      {user?.role === 'Administrador' && (
+        <XlsxUploadModal
+          isOpen={isUploadOpen}
+          currentMeta={xlsxMeta ?? null}
+          onClose={() => setIsUploadOpen(false)}
+          onSuccess={(orders, meta) => {
+            setAllOrders(orders);
+            setExecutiveOrders(mapOrdersToExecutive(orders));
+            setXlsxMeta(meta);
+            setIsUploadOpen(false);
+          }}
+          onClear={async () => {
+            setXlsxMeta(null);
+            setAllOrders([]);
+            setExecutiveOrders([]);
+            setIsUploadOpen(false);
+            setLoading(true);
+          }}
+        />
+      )}
     </div>
   );
 }
