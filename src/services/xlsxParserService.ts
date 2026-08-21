@@ -5,7 +5,7 @@
 // en IndexedDB para que los datos sobrevivan al reload.
 // ============================================================
 import { VisorRow, Order } from "@/types";
-import { groupRowsIntoOrders, mapOrdersToExecutive } from "./visorService";
+import { groupRowsIntoOrders, mapOrdersToExecutive, clearVisorCache } from "./visorService";
 import { indexedDbService, XlsxMeta } from "./indexedDbService";
 import { supabase } from "./supabase";
 
@@ -64,28 +64,58 @@ function readFile(file: File, onPct: (p: number) => void): Promise<ArrayBuffer> 
 }
 
 /** Sincroniza las órdenes del archivo cargado a la base de datos Supabase para que todos los usuarios las vean */
-export async function syncUploadedOrdersToSupabase(orders: Order[]): Promise<void> {
+export async function syncUploadedOrdersToSupabase(
+    orders: Order[],
+    onProgress?: (pct: number, msg: string) => void
+): Promise<void> {
     if (!orders || orders.length === 0) return;
 
+    clearVisorCache();
+
+    const total = orders.length;
     const BATCH_SIZE = 40;
-    for (let i = 0; i < orders.length; i += BATCH_SIZE) {
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
         const batch = orders.slice(i, i + BATCH_SIZE);
+        
+        if (onProgress) {
+            const currentPct = 88 + Math.round((i / total) * 11);
+            onProgress(currentPct, `Sincronizando ${i.toLocaleString('es-CO')} de ${total.toLocaleString('es-CO')} ordenes en la nube...`);
+        }
+
         await Promise.all(batch.map(async (order) => {
             const ovNum = parseInt(order.numero_orden_venta, 10);
             if (isNaN(ovNum)) return;
 
+            const isDelivered = (order.estado_orden || '').toLowerCase().includes('entregada');
+            const isTransit = (order.estado_orden || '').toLowerCase().includes('transito');
+
             const updateData: Record<string, any> = {
-                "Estado": order.estado_raw || (order.estado_orden === 'Entregada' ? 'Cerrado' : 'Abierto'),
-                "Estado de la orden": order.estado_orden
+                "Estado de la orden": order.estado_orden,
+                "Estado": isDelivered ? "Cerrado" : "Abierto",
             };
 
             if (order.vendedor) updateData["vendedor"] = order.vendedor;
             if (order.nombre_cliente) updateData["Nombre del cliente"] = order.nombre_cliente;
             if (order.nit_cliente) updateData["Código del cliente"] = order.nit_cliente;
+            if (order.nombre_sala) updateData["Nombre de la sala"] = order.nombre_sala;
+            if (order.envio) updateData["envio"] = order.envio;
+            if (order.fecha_plan_despacho) updateData["Fecha de despacho"] = order.fecha_plan_despacho;
+            if (order.fecha_real_despacho) updateData["Fecha real de despacho"] = order.fecha_real_despacho;
+            if (order.fecha_estimada_entrega) updateData["Fecha estimada de entrega (real)"] = order.fecha_estimada_entrega;
+            if (order.fecha_entrega) updateData["Fecha de entrega"] = order.fecha_entrega;
             if (order.numero_guia) updateData["# GUIA"] = order.numero_guia;
             if (order.transportador) updateData["Transportador"] = order.transportador;
             if (order.numero_factura) updateData["# Factura"] = order.numero_factura;
             if (order.fecha_factura) updateData["Fecha de la factura"] = order.fecha_factura;
+            if (order.remision) updateData["# Remisión"] = order.remision;
+
+            if (isDelivered) {
+                updateData["cant-ent-despacho"] = "1";
+                updateData["cantidad facturada"] = "1";
+                updateData["envio"] = "Completo";
+                updateData["situación item"] = "Entregado";
+            }
 
             try {
                 await supabase.from('visor_recent')
@@ -96,6 +126,8 @@ export async function syncUploadedOrdersToSupabase(orders: Order[]): Promise<voi
             }
         }));
     }
+
+    clearVisorCache();
 }
 
 // ── API publica ─────────────────────────────────────────────
@@ -169,7 +201,7 @@ export async function parseXlsxFile(
     await yieldUI();
 
     // Fase 4: Guardar en IndexedDB y Sincronizar en la Nube
-    onProgress({ phase: "saving", pct: 88, message: "Sincronizando datos para todos los usuarios..." });
+    onProgress({ phase: "saving", pct: 88, message: "Sincronizando datos en la nube para todos los usuarios..." });
     await yieldUI();
 
     const meta: XlsxMeta = {
@@ -184,9 +216,11 @@ export async function parseXlsxFile(
 
     // Sincronizar a Supabase para que todos los usuarios (vendedores, asesores, etc.) vean los datos
     try {
-        await syncUploadedOrdersToSupabase(orders);
+        await syncUploadedOrdersToSupabase(orders, (pct, msg) => {
+            onProgress({ phase: "saving", pct, message: msg });
+        });
     } catch (e) {
-        console.warn("Sincronización en la nube completada:", e);
+        console.warn("Sincronización en la nube:", e);
     }
 
     onProgress({ phase: "success", pct: 100, message: "Datos cargados y sincronizados exitosamente" });

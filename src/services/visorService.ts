@@ -19,6 +19,10 @@ let visorCache: {
     cacheKey: string;
 } | null = null;
 
+export function clearVisorCache() {
+    visorCache = null;
+}
+
 // ============================================================
 // Callback de progreso para la UI
 // ============================================================
