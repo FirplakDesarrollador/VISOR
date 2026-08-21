@@ -118,9 +118,53 @@ export async function syncUploadedOrdersToSupabase(
             }
 
             try {
-                await supabase.from('visor_recent')
+                const { data, error } = await supabase.from('visor_recent')
                     .update(updateData)
-                    .eq('Orden de venta', ovNum);
+                    .eq('Orden de venta', ovNum)
+                    .select('Orden de venta');
+
+                if (!error && (!data || data.length === 0)) {
+                    // Si la orden no existía previamente en la base de datos, la insertamos
+                    const newRows = order.items.map((item, idx) => ({
+                        "Fecha de ingreso": order.fecha_ingreso || new Date().toLocaleDateString('es-CO'),
+                        "tipo orden de venta": order.tipo_orden_venta || 'Normal',
+                        "Orden de venta": ovNum,
+                        "Orden de compra": order.numero_orden_compra || null,
+                        "vendedor": order.vendedor || null,
+                        "Código del cliente": order.nit_cliente || null,
+                        "Nombre del cliente": order.nombre_cliente || null,
+                        "Nombre de la sala": order.nombre_sala || null,
+                        "Código del producto": item.codigo_producto || null,
+                        "Descripción del producto": item.descripcion_producto || null,
+                        "Cantidad pedida": String(item.cantidad_pedida || 1),
+                        "cantidad facturada": String(item.cantidad_facturada || (isDelivered ? 1 : 0)),
+                        "cant-ent-despacho": String(item.cantidad_despacho || (isDelivered ? 1 : 0)),
+                        "cant proc": item.cantidad_produccion || 0,
+                        "cant planif": item.cantidad_planificada || 0,
+                        "Precio por unidad": item.precio_unitario != null ? String(item.precio_unitario) : null,
+                        "Valor total": item.valor_total != null ? String(item.valor_total) : null,
+                        "Componente": item.componente || 'ITEM',
+                        "situación item": item.situacion_item || (isDelivered ? 'Entregado' : 'Disponible'),
+                        "envio": order.envio || (isDelivered ? 'Completo' : 'Incompleto'),
+                        "Familia": item.familia || null,
+                        "Estado": isDelivered ? "Cerrado" : "Abierto",
+                        "Fecha de despacho": order.fecha_plan_despacho || null,
+                        "Fecha real de despacho": order.fecha_real_despacho || null,
+                        "Fecha estimada de entrega": order.fecha_estimada_entrega || null,
+                        "Fecha estimada de entrega (real)": order.fecha_estimada_entrega || null,
+                        "Destino": order.ciudad_destino || null,
+                        "Estado despacho": order.estado_despacho || null,
+                        "Estado de la orden": order.estado_orden,
+                        "# Remisión": order.remision || item.remision || null,
+                        "Transportador": order.transportador || null,
+                        "# GUIA": order.numero_guia || null,
+                        "Fecha de entrega": order.fecha_entrega || null,
+                        "# Factura": order.numero_factura || null,
+                        "Fecha de la factura": order.fecha_factura || null,
+                        "Item": String(idx + 1)
+                    }));
+                    await supabase.from('visor_recent').upsert(newRows);
+                }
             } catch (err) {
                 // Continuar silenciosamente
             }
