@@ -77,13 +77,12 @@ const applyFilters = <T>(
     const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
     q = q.gte('fecha_ingreso_parsed', sixMonthsAgoStr);
 
-    if (role === 'Asesor') {
+    if (role === 'Asesor' || role === 'Vendedor') {
         if (Array.isArray(vendedorFilter) && vendedorFilter.length > 0) {
-            q = q.in('vendedor', vendedorFilter);
+            const orConds = vendedorFilter.map(v => `vendedor.ilike.%${v.trim()}%`).join(',');
+            q = q.or(orConds);
         } else if (typeof vendedorFilter === 'string' && vendedorFilter.trim() !== '') {
             q = q.ilike('vendedor', `%${vendedorFilter.trim()}%`);
-        } else {
-            q = q.eq('vendedor', 'SESSION_IDENTITY_MISSING');
         }
     }
 

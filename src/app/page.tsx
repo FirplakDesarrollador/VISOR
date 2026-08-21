@@ -226,27 +226,61 @@ export default function Home() {
     }
   }, [normalize]);
 
+const isOrderAssignedToUser = (orderVendedorRaw: string | undefined, user: User | null): boolean => {
+  if (!user) return true;
+  const role = (user.role || '').toLowerCase();
+  const isVendorRole = role.includes('vendedor') || role.includes('asesor');
+  if (!isVendorRole) return true;
+
+  let assignedTerms = (user.assignedVendor || []).map(v => v.trim()).filter(Boolean);
+
+  // Si no tiene vendedores asignados configurados en BD, usar nombre o email como fallback
+  if (assignedTerms.length === 0) {
+    if (user.name) assignedTerms.push(user.name);
+    if (user.email) {
+      const emailPrefix = user.email.split('@')[0].replace(/\./g, ' ');
+      assignedTerms.push(emailPrefix);
+    }
+  }
+
+  if (assignedTerms.length === 0) return true;
+
+  const normalizeStr = (s: string) => 
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
+
+  const orderVendNorm = normalizeStr(orderVendedorRaw || '');
+  if (!orderVendNorm) return false;
+
+  return assignedTerms.some(term => {
+    const termNorm = normalizeStr(term);
+    if (!termNorm) return false;
+
+    // 1. Coincidencia directa en cualquier dirección
+    if (orderVendNorm.includes(termNorm) || termNorm.includes(orderVendNorm)) {
+      return true;
+    }
+
+    // 2. Coincidencia por palabras/tokens (ej: "Natalia Gomez" coincide con "Natalia Gomez Usma")
+    const termTokens = termNorm.split(/\s+/).filter(t => t.length > 2);
+    const orderTokens = orderVendNorm.split(/\s+/).filter(t => t.length > 2);
+    if (termTokens.length === 0 || orderTokens.length === 0) return false;
+
+    const matchingTokens = termTokens.filter(t => orderTokens.some(ot => ot.includes(t) || t.includes(ot)));
+    const minMatchesRequired = Math.min(2, termTokens.length);
+
+    return matchingTokens.length >= minMatchesRequired;
+  });
+};
+
   // 0. Role Filtered Orders
   const roleFilteredOrders = useMemo(() => {
-    if (!user || user.role !== 'Vendedor') return allOrders;
-    const assigned = user.assignedVendor || [];
-    if (assigned.length === 0) return [];
-    
-    return allOrders.filter(order => {
-      const orderVendedor = (order.vendedor || '').toLowerCase();
-      return assigned.some(v => orderVendedor.includes(v.toLowerCase()));
-    });
+    if (!user) return allOrders;
+    return allOrders.filter(order => isOrderAssignedToUser(order.vendedor, user));
   }, [allOrders, user]);
 
   const roleFilteredExecutiveOrders = useMemo(() => {
-    if (!user || user.role !== 'Vendedor') return executiveOrders;
-    const assigned = user.assignedVendor || [];
-    if (assigned.length === 0) return [];
-    
-    return executiveOrders.filter(order => {
-      const orderVendedor = (order.vendedor || '').toLowerCase();
-      return assigned.some(v => orderVendedor.includes(v.toLowerCase()));
-    });
+    if (!user) return executiveOrders;
+    return executiveOrders.filter(order => isOrderAssignedToUser(order.vendedor, user));
   }, [executiveOrders, user]);
 
   // 1. Searched Orders (Apply text filters only)
@@ -411,11 +445,12 @@ export default function Home() {
       if (allOrders.length === 0) setLoading(true);
       try {
         const role = user ? user.role : 'Externo';
-        const vendedorFilter = role === 'Vendedor' ? user?.assignedVendor : undefined;
+        const isVendor = (role || '').toLowerCase().includes('vendedor') || (role || '').toLowerCase().includes('asesor');
+        const vendedorFilter = isVendor ? (user?.assignedVendor?.length ? user.assignedVendor : user?.name ? [user.name] : undefined) : undefined;
         const onProgress: ProgressCallback = (loaded, estimated) => {
           setLoadingProgress({ loaded, estimated: estimated || loaded });
         };
-        const data = await getOrdersFromVisor(role === 'Vendedor' ? 'Asesor' : role, vendedorFilter, onProgress);
+        const data = await getOrdersFromVisor(isVendor ? 'Asesor' : role, vendedorFilter, onProgress);
 
         // Si xlsx llego mientras Supabase cargaba, no sobreescribir
         if (xlsxOverrideRef.current) return;
